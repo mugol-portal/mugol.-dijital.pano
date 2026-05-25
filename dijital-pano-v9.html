@@ -1,0 +1,2361 @@
+<!DOCTYPE html>
+<html lang="tr">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>MuGöl Dijital Pano</title>
+<link href="https://fonts.googleapis.com/css2?family=Nunito:ital,wght@0,300;0,400;0,500;0,600;0,700;0,800;0,900;1,400&display=swap" rel="stylesheet">
+<style>
+*,*::before,*::after{margin:0;padding:0;box-sizing:border-box;}
+:root{
+  --gold:#ffd700;--gold2:#ffb300;--gold3:#ffe066;
+  --blue1:#001f5b;--blue2:#003580;--blue3:#0055b3;
+  --red1:#b71c1c;--red2:#e53935;
+  --green1:#1b5e20;--green2:#2e7d32;
+  --dark:#07091a;--dark2:#0c1228;--dark3:#121e3a;
+  --border:rgba(255,215,0,.55);
+  --text:#e8eaf6;--muted:#7986a8;
+  --edit-ring:rgba(99,179,237,.7);
+  --radius:10px;--radius-sm:6px;--radius-lg:14px;
+}
+html,body{height:100%;overflow:hidden;}
+body{font-family:'Nunito',sans-serif;background:var(--dark);color:var(--text);display:flex;flex-direction:column;height:100%;}
+
+/* scanline */
+body::after{content:'';position:fixed;inset:0;background:repeating-linear-gradient(0deg,transparent,transparent 3px,rgba(0,0,0,.06) 3px,rgba(0,0,0,.06) 4px);pointer-events:none;z-index:9999;}
+
+/* ═══ SETUP EKRANI ═══ */
+#setupScreen{
+  position:fixed;inset:0;z-index:99999;
+  background:linear-gradient(135deg,#020718 0%,#050d2a 40%,#030b1e 100%);
+  display:flex;align-items:flex-start;justify-content:center;
+  overflow-y:auto;padding:20px 16px;
+}
+#setupScreen::before{
+  content:'';position:fixed;inset:0;pointer-events:none;
+  background:radial-gradient(ellipse 80% 60% at 50% 0%,rgba(0,60,180,.18),transparent 70%),
+             radial-gradient(ellipse 50% 40% at 80% 80%,rgba(255,180,0,.06),transparent 60%);
+  z-index:0;
+}
+#setupScreen .setup-wrap{position:relative;z-index:1;}
+#setupScreen.hidden{display:none;}
+.setup-wrap{width:100%;max-width:860px;}
+.setup-logo{text-align:center;margin-bottom:30px;}
+.sl-logo-wrap{
+  width:90px;height:90px;border-radius:50%;margin:0 auto 14px;
+  background:conic-gradient(rgba(255,215,0,.25) 0deg,rgba(255,215,0,.08) 360deg);
+  border:2px solid rgba(255,215,0,.35);
+  display:flex;align-items:center;justify-content:center;
+  box-shadow:0 0 0 4px rgba(255,215,0,.08),0 0 30px rgba(255,215,0,.2),0 0 60px rgba(255,215,0,.1);
+  animation:logoPulse 4s ease-in-out infinite;overflow:hidden;
+}
+@keyframes logoPulse{
+  0%,100%{box-shadow:0 0 0 4px rgba(255,215,0,.08),0 0 30px rgba(255,215,0,.2);}
+  50%{box-shadow:0 0 0 6px rgba(255,215,0,.14),0 0 50px rgba(255,215,0,.35);}
+}
+.sl-logo-img{width:80%;height:80%;object-fit:contain;border-radius:50%;}
+.sl-icon{font-size:50px;line-height:1;filter:drop-shadow(0 0 24px rgba(255,215,0,.6));animation:iconFloat 4s ease-in-out infinite;}
+.setup-logo h1{font-family:'Nunito',sans-serif;font-size:26px;font-weight:700;color:var(--gold);letter-spacing:4px;text-transform:uppercase;margin-top:4px;text-shadow:0 0 30px rgba(255,215,0,.4);}
+.setup-logo p{font-size:11px;color:var(--muted);letter-spacing:2px;margin-top:4px;}
+
+/* ── Blok Ders Seçici ── */
+.block-selector{
+  display:grid;grid-template-columns:repeat(auto-fit,minmax(120px,1fr));gap:8px;
+  margin-bottom:14px;
+}
+.block-btn{
+  background:rgba(255,255,255,.04);border:1px solid rgba(255,215,0,.2);
+  border-radius:6px;padding:10px 8px;cursor:pointer;text-align:center;
+  font-family:'Nunito',sans-serif;transition:all .2s;
+  display:flex;flex-direction:column;align-items:center;gap:4px;
+}
+.block-btn:hover{background:rgba(255,215,0,.1);border-color:rgba(255,215,0,.5);}
+.block-btn.selected{
+  background:linear-gradient(135deg,rgba(255,215,0,.18),rgba(255,215,0,.07));
+  border-color:var(--gold);
+  box-shadow:0 0 12px rgba(255,215,0,.2),inset 0 1px 0 rgba(255,255,255,.08);
+}
+.block-btn .bb-icon{font-size:20px;line-height:1;}
+.block-btn .bb-label{font-size:11px;font-weight:700;letter-spacing:1px;color:var(--text);}
+.block-btn .bb-sub{font-size:9px;color:var(--muted);letter-spacing:.5px;}
+.block-btn.selected .bb-label{color:var(--gold);}
+.block-custom{
+  background:rgba(255,255,255,.04);border:1px solid rgba(255,215,0,.2);
+  border-radius:6px;padding:14px 16px;
+  display:none;
+}
+.block-custom.visible{display:block;}
+
+/* ── Premium genel iyileştirmeler ── */
+.setup-grid{display:grid;grid-template-columns:1fr 1fr;gap:18px;margin-bottom:18px;}
+
+.setup-card{background:linear-gradient(135deg,rgba(255,255,255,.06),rgba(255,255,255,.02));border:1px solid rgba(255,215,0,.2);border-top:3px solid var(--gold);border-radius:8px;padding:20px 22px;box-shadow:0 4px 20px rgba(0,0,0,.3),inset 0 1px 0 rgba(255,255,255,.05);transition:box-shadow .2s;}
+.setup-card.full{grid-column:1/-1;}
+.sc-title{font-family:'Nunito',sans-serif;font-size:11px;font-weight:700;color:var(--gold);letter-spacing:2.5px;text-transform:uppercase;margin-bottom:12px;display:flex;align-items:center;gap:7px;}
+.sc-title span{font-size:14px;}
+.sf{margin-bottom:11px;}
+.sf:last-child{margin-bottom:0;}
+.sf label{display:block;font-size:10px;color:var(--muted);letter-spacing:1.5px;text-transform:uppercase;margin-bottom:4px;}
+.sf input,.sf textarea{width:100%;background:rgba(255,255,255,.06);border:1px solid rgba(255,215,0,.2);border-radius:4px;color:#fff;font-family:'Nunito',sans-serif;font-size:14px;padding:7px 10px;outline:none;transition:border .2s,box-shadow .2s;}
+.sf input:focus,.sf textarea:focus{border-color:rgba(99,179,237,.7);box-shadow:0 0 0 2px rgba(99,179,237,.15);}
+.sf textarea{resize:vertical;min-height:64px;line-height:1.5;}
+.sf-hint{font-size:10px;color:var(--muted);margin-top:3px;opacity:.7;}
+/* teacher tag input */
+.teacher-tags{display:flex;flex-wrap:wrap;gap:5px;background:rgba(255,255,255,.06);border:1px solid rgba(255,215,0,.2);border-radius:4px;padding:5px 7px;min-height:38px;cursor:text;transition:border .2s,box-shadow .2s;}
+.teacher-tags:focus-within{border-color:rgba(99,179,237,.7);box-shadow:0 0 0 2px rgba(99,179,237,.15);}
+.tag-input{border:none;outline:none;background:transparent;color:#fff;font-family:'Nunito',sans-serif;font-size:14px;min-width:120px;flex:1;padding:2px 3px;}
+/* schedule table */
+.sch-table{width:100%;border-collapse:collapse;}
+.sch-table th{font-family:'Nunito',sans-serif;font-size:10px;font-weight:700;color:var(--muted);letter-spacing:1.5px;text-transform:uppercase;padding:3px 5px;text-align:left;border-bottom:1px solid rgba(255,255,255,.1);}
+.sch-table td{padding:2px 3px;}
+.sch-table input{width:100%;background:rgba(255,255,255,.06);border:1px solid rgba(255,255,255,.1);border-radius:3px;color:#fff;font-family:'Nunito',sans-serif;font-size:12px;padding:4px 6px;outline:none;transition:border .15s;}
+.sch-table input:focus{border-color:rgba(99,179,237,.6);}
+.sch-table tr.row-break td input{background:rgba(255,215,0,.06);}
+.sch-table .del-row{cursor:pointer;color:var(--muted);font-size:13px;padding:0 3px;transition:color .15s;background:none;border:none;}
+.sch-table .del-row:hover{color:var(--red2);}
+.sch-add-row{margin-top:7px;display:flex;gap:7px;}
+.btn-add-row{background:rgba(255,215,0,.1);border:1px solid rgba(255,215,0,.3);border-radius:4px;color:var(--gold);font-family:'Nunito',sans-serif;font-size:10px;font-weight:700;letter-spacing:1px;padding:4px 11px;cursor:pointer;transition:background .15s;}
+.btn-add-row:hover{background:rgba(255,215,0,.2);}
+/* ── Geri Dön butonu ── */
+.setup-back-btn{
+  display:inline-flex;align-items:center;gap:6px;
+  margin:0 auto 18px;padding:7px 18px;
+  background:linear-gradient(135deg,rgba(255,140,0,.15),rgba(255,140,0,.08));
+  border:1px solid rgba(255,140,0,.4);border-radius:20px;
+  color:#ffa040;font-family:'Nunito',sans-serif;font-size:11px;
+  font-weight:700;letter-spacing:1.5px;text-transform:uppercase;
+  cursor:pointer;transition:all .2s;
+  box-shadow:0 2px 10px rgba(255,100,0,.2);
+}
+.setup-back-btn:hover{
+  background:linear-gradient(135deg,rgba(255,140,0,.28),rgba(255,140,0,.16));
+  border-color:rgba(255,140,0,.7);
+  box-shadow:0 4px 16px rgba(255,100,0,.35);
+  transform:translateY(-1px);
+}
+
+/* start button */
+.setup-footer{text-align:center;margin-top:20px;padding-bottom:16px;}
+.btn-start{background:linear-gradient(135deg,#1a3a8f,#0055cc);color:#fff;border:none;border-radius:8px;padding:16px 60px;font-family:'Nunito',sans-serif;font-size:18px;font-weight:700;letter-spacing:3px;cursor:pointer;box-shadow:0 8px 28px rgba(0,85,204,.5),0 0 0 1px rgba(255,215,0,.35),inset 0 1px 0 rgba(255,255,255,.15);transition:transform .15s,box-shadow .15s;text-transform:uppercase;position:relative;overflow:hidden;}
+.btn-start::before{content:'';position:absolute;inset:0;background:linear-gradient(90deg,transparent,rgba(255,255,255,.08),transparent);transform:translateX(-100%);transition:transform .4s;}
+.btn-start:hover{transform:translateY(-2px);box-shadow:0 12px 36px rgba(0,85,204,.7),0 0 0 1px rgba(255,215,0,.5);}
+.btn-start:hover::before{transform:translateX(100%);}
+.setup-footer small{display:block;margin-top:8px;font-size:10px;color:var(--muted);letter-spacing:1px;}
+
+/* ═══ EDIT OVERLAY ═══ */
+.edit-modal{display:none;position:fixed;inset:0;z-index:10000;align-items:center;justify-content:center;}
+.edit-modal.open{display:flex;}
+.edit-backdrop{position:absolute;inset:0;background:rgba(0,0,0,.6);backdrop-filter:blur(4px);}
+.edit-box{
+  position:relative;z-index:1;
+  background:linear-gradient(135deg,#141c38,#0d1428);
+  border:1px solid var(--border);
+  border-top:3px solid var(--gold);
+  border-radius:6px;
+  padding:24px 28px;
+  min-width:320px;max-width:480px;width:90%;
+  box-shadow:0 24px 64px rgba(0,0,0,.7),0 0 40px rgba(255,215,0,.08);
+  animation:editPop .18s cubic-bezier(.34,1.56,.64,1) both;
+}
+@keyframes editPop{from{transform:scale(.9);opacity:0;}to{transform:scale(1);opacity:1;}}
+.edit-box h3{
+  font-family:'Nunito',sans-serif;font-size:14px;font-weight:600;
+  color:var(--gold);letter-spacing:2px;text-transform:uppercase;
+  margin-bottom:16px;display:flex;align-items:center;gap:8px;
+}
+.edit-box h3 .edit-icon{font-size:16px;}
+.edit-field{margin-bottom:14px;}
+.edit-field label{display:block;font-size:11px;color:var(--muted);letter-spacing:1.5px;text-transform:uppercase;margin-bottom:6px;}
+.edit-field input,.edit-field textarea,.edit-field select{
+  width:100%;background:rgba(255,255,255,.06);
+  border:1px solid rgba(255,215,0,.25);border-radius:4px;
+  color:#fff;font-family:'Nunito',sans-serif;font-size:15px;
+  padding:9px 12px;outline:none;transition:border .2s,box-shadow .2s;
+}
+.edit-field input:focus,.edit-field textarea:focus{
+  border-color:rgba(99,179,237,.8);
+  box-shadow:0 0 0 2px rgba(99,179,237,.2);
+}
+.edit-field textarea{resize:vertical;min-height:70px;}
+.edit-field input[type=number]{-moz-appearance:textfield;}
+.edit-actions{display:flex;gap:10px;margin-top:18px;justify-content:flex-end;}
+.btn-save{
+  background:linear-gradient(135deg,var(--blue2),var(--blue3));
+  color:#fff;border:none;border-radius:4px;
+  padding:9px 22px;font-family:'Nunito',sans-serif;font-size:13px;
+  font-weight:600;letter-spacing:1.5px;cursor:pointer;
+  box-shadow:0 4px 14px rgba(0,53,128,.5);
+  transition:transform .15s,box-shadow .15s;
+}
+.btn-save:hover{transform:translateY(-1px);box-shadow:0 6px 20px rgba(0,53,128,.7);}
+.btn-cancel{
+  background:transparent;color:var(--muted);border:1px solid rgba(255,255,255,.15);
+  border-radius:4px;padding:9px 16px;font-family:'Nunito',sans-serif;font-size:13px;
+  font-weight:600;letter-spacing:1px;cursor:pointer;transition:background .2s;
+}
+.btn-cancel:hover{background:rgba(255,255,255,.05);}
+
+/* editable hover ring */
+.editable{cursor:pointer;transition:outline .15s,box-shadow .15s;border-radius:3px;}
+.editable:hover{outline:2px dashed rgba(99,179,237,.5);outline-offset:3px;position:relative;}
+.editable:hover::after{
+  content:'✏';position:absolute;top:-10px;right:-6px;
+  font-size:11px;background:#1a2a4a;color:#63b3ed;
+  border:1px solid rgba(99,179,237,.5);border-radius:3px;
+  padding:1px 4px;line-height:1.4;pointer-events:none;z-index:100;
+}
+
+/* ═══ HEADER ═══ */
+.header{height:70px;display:flex;align-items:stretch;flex-shrink:0;position:relative;overflow:hidden;border-bottom:3px solid var(--gold);box-shadow:0 4px 30px rgba(0,0,0,.7);}
+.hbg{position:absolute;inset:0;background:linear-gradient(90deg,#000d30 0%,#002275 30%,#003db0 50%,#002275 70%,#000d30 100%);}
+.hbg::before{content:'';position:absolute;inset:0;background:repeating-linear-gradient(45deg,transparent,transparent 14px,rgba(255,255,255,.025) 14px,rgba(255,255,255,.025) 28px);}
+.hbg::after{content:'';position:absolute;top:0;bottom:0;width:80px;background:linear-gradient(90deg,transparent,rgba(255,255,255,.07),transparent);animation:sweep 5s ease-in-out infinite;}
+@keyframes sweep{0%{left:-100px;}100%{left:110%;}}
+
+.h-school{flex:1;display:flex;align-items:center;padding:0 20px;gap:14px;position:relative;z-index:2;}
+.h-emblem{
+  width:50px;height:50px;border-radius:50%;flex-shrink:0;
+  background:linear-gradient(135deg,rgba(255,215,0,.2),rgba(255,180,0,.08));
+  border:2px solid rgba(255,215,0,.5);
+  display:flex;align-items:center;justify-content:center;font-size:26px;
+  box-shadow:0 0 0 3px rgba(255,215,0,.15),0 0 20px rgba(255,215,0,.5),0 0 40px rgba(255,215,0,.2);
+  animation:emberPulse 3s ease-in-out infinite;overflow:hidden;
+}
+@keyframes emberPulse{
+  0%,100%{box-shadow:0 0 0 2px rgba(255,215,0,.4),0 0 20px rgba(255,215,0,.6),0 0 40px rgba(255,215,0,.2);}
+  50%    {box-shadow:0 0 0 3px rgba(255,215,0,.6),0 0 30px rgba(255,215,0,.9),0 0 60px rgba(255,215,0,.3);}
+}
+.h-text{display:flex;flex-direction:column;gap:2px;}
+.h-name{
+  font-family:'Nunito',sans-serif;font-size:24px;font-weight:700;
+  color:#fff;letter-spacing:3px;text-transform:uppercase;line-height:1;
+  text-shadow:0 2px 12px rgba(0,0,0,.7),0 0 24px rgba(80,140,255,.3);
+}
+.h-sub{font-size:11px;color:rgba(255,215,0,.7);letter-spacing:2.5px;text-transform:uppercase;}
+
+.h-logo{background:rgba(255,255,255,.08);padding:4px 10px;display:flex;flex-direction:column;align-items:center;justify-content:center;border-left:3px solid var(--gold);border-right:3px solid var(--gold);position:relative;z-index:2;min-width:64px;}
+.h-logo-img{height:54px;width:auto;max-width:80px;object-fit:contain;filter:drop-shadow(0 0 6px rgba(255,215,0,.3));}
+.h-logo .lm{font-family:'Nunito',sans-serif;font-size:20px;font-weight:700;color:#003580;line-height:1;}
+.h-logo .ls{font-family:'Nunito',sans-serif;font-size:10px;font-weight:600;color:#777;letter-spacing:2px;}
+
+.h-dt{display:flex;align-items:stretch;position:relative;z-index:2;}
+.h-date{
+  background:linear-gradient(135deg,var(--green1),var(--green2));
+  padding:0 22px;display:flex;align-items:center;
+  font-family:'Nunito',sans-serif;font-size:17px;font-weight:600;
+  letter-spacing:1px;border-left:3px solid var(--gold);
+  text-shadow:0 1px 4px rgba(0,0,0,.5);white-space:nowrap;
+}
+.h-time{
+  background:linear-gradient(135deg,#05060f,#0a0d20);
+  padding:0 18px;display:flex;align-items:center;
+  font-family:'Nunito',sans-serif;font-size:28px;font-weight:700;
+  color:var(--gold);letter-spacing:4px;border-left:3px solid var(--gold);
+  min-width:110px;
+  animation:clockGlow 2.5s ease-in-out infinite;
+}
+@keyframes clockGlow{
+  0%,100%{text-shadow:0 0 20px rgba(255,215,0,.7),0 0 40px rgba(255,215,0,.3);}
+  50%    {text-shadow:0 0 35px rgba(255,215,0,1),0 0 70px rgba(255,215,0,.5);}
+}
+
+/* ═══ MAIN ═══ */
+.main{display:flex;flex:1;overflow:hidden;}
+
+/* ═══ LEFT ═══ */
+.left-panel{width:228px;flex-shrink:0;background:linear-gradient(180deg,var(--dark2),var(--dark3));border-right:2px solid var(--border);display:flex;flex-direction:column;box-shadow:4px 0 24px rgba(0,0,0,.5);}
+.ph{
+  background:linear-gradient(90deg,var(--red1) 0%,var(--red2) 60%,var(--red1) 100%);
+  padding:11px 14px;font-family:'Nunito',sans-serif;font-size:13px;font-weight:700;
+  letter-spacing:2px;text-transform:uppercase;display:flex;align-items:center;gap:8px;
+  border-bottom:2px solid var(--gold);overflow:hidden;position:relative;flex-shrink:0;
+}
+.ph::after{content:'';position:absolute;right:0;top:0;bottom:0;width:40%;background:linear-gradient(90deg,transparent,rgba(255,255,255,.06));animation:phSheen 4s ease-in-out infinite;}
+@keyframes phSheen{0%,100%{opacity:0;}50%{opacity:1;}}
+.ph-icon{width:22px;height:22px;background:rgba(255,255,255,.2);border-radius:50%;display:flex;align-items:center;justify-content:center;font-size:13px;flex-shrink:0;}
+
+.duty-list{flex:1;overflow-y:auto;}
+.duty-list::-webkit-scrollbar{width:3px;}
+.duty-list::-webkit-scrollbar-thumb{background:rgba(255,215,0,.3);border-radius:2px;}
+
+.duty-item{
+  display:flex;align-items:center;padding:11px 14px;
+  border-bottom:1px solid rgba(255,255,255,.06);gap:10px;
+  transition:background .2s;position:relative;
+  animation:slideInL .35s ease both;
+}
+.duty-item::before{content:'';position:absolute;left:0;top:0;bottom:0;width:3px;background:linear-gradient(180deg,var(--gold),transparent);opacity:0;transition:opacity .2s;}
+.duty-item:hover{background:rgba(255,215,0,.05);}
+.duty-item:hover::before{opacity:1;}
+.duty-item:nth-child(1){animation-delay:.04s;}
+.duty-item:nth-child(2){animation-delay:.08s;}
+.duty-item:nth-child(3){animation-delay:.12s;}
+.duty-item:nth-child(4){animation-delay:.16s;}
+.duty-item:nth-child(5){animation-delay:.20s;}
+.duty-item:nth-child(6){animation-delay:.24s;}
+
+.d-badge{
+  background:linear-gradient(135deg,rgba(255,215,0,.14),rgba(255,215,0,.04));
+  border:1px solid rgba(255,215,0,.3);border-radius:5px;
+  padding:4px 6px;font-family:'Nunito',sans-serif;font-size:11px;
+  font-weight:700;color:var(--gold);letter-spacing:.5px;
+  min-width:52px;text-align:center;flex-shrink:0;line-height:1.2;
+}
+.d-div{width:1px;height:32px;background:linear-gradient(180deg,transparent,rgba(255,255,255,.2),transparent);flex-shrink:0;}
+.d-info{display:flex;flex-direction:column;gap:2px;flex:1;min-width:0;}
+.d-role{font-size:10px;color:var(--muted);text-transform:uppercase;letter-spacing:1px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;}
+.d-row{display:flex;align-items:baseline;gap:4px;}
+.d-num{font-family:'Nunito',sans-serif;font-size:24px;font-weight:700;color:#fff;line-height:1;}
+.d-unit{font-size:11px;color:var(--muted);}
+.d-edit-btn{
+  width:22px;height:22px;background:rgba(99,179,237,.15);border:1px solid rgba(99,179,237,.3);
+  border-radius:4px;color:#63b3ed;font-size:11px;display:none;
+  align-items:center;justify-content:center;cursor:pointer;flex-shrink:0;
+  transition:background .15s;
+}
+.duty-item:hover .d-edit-btn{display:flex;}
+.d-edit-btn:hover{background:rgba(99,179,237,.3);}
+
+/* ═══ CENTER ═══ */
+.center{flex:1;display:flex;flex-direction:column;background:var(--dark);position:relative;overflow:hidden;}
+.slideshow{flex:1;min-height:0;position:relative;overflow:hidden;}
+/* ── Büyük Saat + Oturum Bilgisi ── */
+.center-clock-bar{
+  display:flex;align-items:center;justify-content:center;gap:0;
+  flex-shrink:0;
+  background:linear-gradient(180deg,rgba(0,10,40,.97) 0%,rgba(0,6,28,.95) 100%);
+  border-bottom:2px solid var(--border);
+  padding:0;
+  position:relative;overflow:hidden;
+  height:200px;
+}
+.center-clock-bar::before{
+  content:'';position:absolute;inset:0;
+  background:repeating-linear-gradient(90deg,transparent,transparent 60px,rgba(255,215,0,.02) 60px,rgba(255,215,0,.02) 61px),
+             repeating-linear-gradient(0deg,transparent,transparent 30px,rgba(255,215,0,.015) 30px,rgba(255,215,0,.015) 31px);
+  pointer-events:none;
+}
+.center-clock-bar::after{
+  content:'';position:absolute;left:0;right:0;bottom:0;height:1px;
+  background:linear-gradient(90deg,transparent,rgba(255,215,0,.6),transparent);
+}
+
+.ccb-clock{
+  font-family:'Nunito',sans-serif;font-size:130px;font-weight:700;
+  color:var(--gold);letter-spacing:8px;line-height:1;
+  text-shadow:0 0 40px rgba(255,215,0,1),0 0 80px rgba(255,215,0,.5),0 0 120px rgba(255,215,0,.25);
+  animation:clockGlow 2.5s ease-in-out infinite;
+  padding:0 36px 0 32px;flex-shrink:0;
+  position:relative;z-index:1;
+}
+
+.ccb-divider{
+  width:2px;height:100px;flex-shrink:0;
+  background:linear-gradient(180deg,transparent,rgba(255,215,0,.5),transparent);
+}
+
+.ccb-session{
+  display:flex;flex-direction:column;justify-content:center;gap:8px;
+  padding:0 36px;flex:1;max-width:500px;
+  position:relative;z-index:1;
+}
+.ccb-sess-label{
+  font-family:'Nunito',sans-serif;font-size:34px;font-weight:800;
+  color:#fff;letter-spacing:2px;text-transform:uppercase;line-height:1;
+}
+.ccb-sess-label.type-lesson{color:#6ab0ff;text-shadow:0 0 18px rgba(106,176,255,.4);}
+.ccb-sess-label.type-break{color:var(--gold);text-shadow:0 0 18px rgba(255,215,0,.4);}
+.ccb-sess-label.type-lunch{color:#81c784;text-shadow:0 0 18px rgba(129,199,132,.4);}
+.ccb-sess-label.type-none{color:var(--muted);}
+
+.ccb-sess-times{
+  font-family:'Nunito',sans-serif;font-size:22px;font-weight:600;
+  color:rgba(255,255,255,.6);letter-spacing:2px;
+}
+.ccb-progress-wrap{
+  height:7px;background:rgba(255,255,255,.08);border-radius:4px;
+  overflow:hidden;width:100%;margin-top:2px;
+}
+.ccb-progress-bar{
+  height:100%;border-radius:4px;width:0%;
+  background:linear-gradient(90deg,var(--gold2),var(--gold));
+  box-shadow:0 0 10px rgba(255,215,0,.7);
+  transition:width 1s linear;
+}
+.ccb-progress-bar.type-break{background:linear-gradient(90deg,#ffa040,#ffd700);}
+.ccb-progress-bar.type-lesson{background:linear-gradient(90deg,#3a7bd5,#6ab0ff);}
+.ccb-progress-bar.type-lunch{background:linear-gradient(90deg,#2e7d32,#81c784);}
+
+.ccb-sess-remain{
+  font-family:'Nunito',sans-serif;font-size:19px;font-weight:700;
+  color:rgba(255,255,255,.5);letter-spacing:1.5px;
+}
+
+.slide{position:absolute;inset:0;display:flex;align-items:center;justify-content:center;opacity:0;transition:opacity 1.2s ease;}
+.slide.active{opacity:1;}
+
+.s1{background:radial-gradient(ellipse at 30% 50%,#0d2060 0%,#07091a 70%);}
+.s2{background:radial-gradient(ellipse at 70% 40%,#1e0a40 0%,#07091a 70%);}
+.s3{background:radial-gradient(ellipse at 50% 60%,#0a1f10 0%,#07091a 70%);}
+.s4{background:radial-gradient(ellipse at 30% 60%,#200a0a 0%,#07091a 70%);}
+
+.slide::before{
+  content:'';position:absolute;inset:0;
+  background-image:linear-gradient(rgba(255,215,0,.04) 1px,transparent 1px),linear-gradient(90deg,rgba(255,215,0,.04) 1px,transparent 1px);
+  background-size:64px 64px;
+  mask-image:radial-gradient(ellipse at center,black 30%,transparent 80%);
+}
+
+.slide-inner{position:relative;z-index:2;text-align:center;padding:40px;max-width:720px;width:100%;}
+.s-big-icon{font-size:76px;line-height:1;margin-bottom:20px;filter:drop-shadow(0 0 24px rgba(255,215,0,.4));animation:iconFloat 4s ease-in-out infinite;}
+@keyframes iconFloat{0%,100%{transform:translateY(0);}50%{transform:translateY(-10px);}};
+.s-title{font-family:'Nunito',sans-serif;font-size:50px;font-weight:700;color:var(--gold);letter-spacing:4px;text-transform:uppercase;margin-bottom:12px;text-shadow:0 0 40px rgba(255,215,0,.5);line-height:1;}
+.s-sub{font-size:17px;color:rgba(255,255,255,.6);letter-spacing:2px;font-weight:300;}
+
+.ac{
+  background:linear-gradient(135deg,rgba(255,255,255,.07),rgba(255,255,255,.02));
+  border:1px solid rgba(255,215,0,.2);border-top:3px solid var(--gold);
+  border-radius:4px;padding:32px 44px;max-width:650px;width:90%;
+  backdrop-filter:blur(14px);
+  box-shadow:0 24px 60px rgba(0,0,0,.6),inset 0 1px 0 rgba(255,255,255,.08);
+}
+.ac-tag{
+  display:inline-flex;align-items:center;gap:6px;
+  color:#fff;font-family:'Nunito',sans-serif;font-size:11px;
+  letter-spacing:2px;padding:5px 14px;border-radius:2px;
+  margin-bottom:18px;text-transform:uppercase;
+}
+.ac-tag.red   {background:linear-gradient(90deg,var(--red1),var(--red2));box-shadow:0 4px 12px rgba(183,28,28,.4);}
+.ac-tag.green {background:linear-gradient(90deg,#155724,#28a745);box-shadow:0 4px 12px rgba(21,87,36,.4);}
+.ac-tag.blue  {background:linear-gradient(90deg,#003580,#0055b3);box-shadow:0 4px 12px rgba(0,53,128,.4);}
+.ac-tag.purple{background:linear-gradient(90deg,#4a148c,#7b1fa2);box-shadow:0 4px 12px rgba(74,20,140,.4);}
+.ac-title{font-family:'Nunito',sans-serif;font-size:32px;font-weight:700;color:var(--gold);letter-spacing:2px;margin-bottom:14px;text-shadow:0 0 20px rgba(255,215,0,.3);}
+.ac-body{font-size:16px;color:rgba(255,255,255,.78);line-height:1.75;font-weight:300;}
+.ac-meta{display:flex;align-items:center;gap:6px;margin-top:18px;padding-top:14px;border-top:1px solid rgba(255,255,255,.1);font-size:12px;color:var(--muted);letter-spacing:1px;}
+
+.slide-dots{position:absolute;bottom:14px;left:50%;transform:translateX(-50%);display:flex;gap:10px;z-index:10;}
+.dot{width:7px;height:7px;border-radius:50%;background:rgba(255,255,255,.2);border:1px solid rgba(255,255,255,.2);cursor:pointer;transition:all .3s;}
+.dot.active{background:var(--gold);border-color:var(--gold);box-shadow:0 0 12px rgba(255,215,0,.7);width:24px;border-radius:4px;}
+
+.slide-prog{position:absolute;bottom:0;left:0;height:3px;background:linear-gradient(90deg,var(--gold),var(--gold2));box-shadow:0 0 8px rgba(255,215,0,.6);z-index:10;}
+
+/* edit overlay on slide */
+.slide-edit-btn{
+  position:absolute;top:12px;right:12px;z-index:20;
+  background:rgba(10,20,50,.8);border:1px solid rgba(99,179,237,.4);
+  border-radius:5px;color:#63b3ed;font-size:12px;padding:6px 12px;
+  cursor:pointer;display:none;align-items:center;gap:6px;
+  font-family:'Nunito',sans-serif;letter-spacing:1px;
+  transition:background .15s;backdrop-filter:blur(6px);
+}
+.slide:hover .slide-edit-btn{display:flex;}
+.slide-edit-btn:hover{background:rgba(99,179,237,.2);}
+
+/* ═══ RIGHT ═══ */
+.right-panel{width:214px;flex-shrink:0;background:linear-gradient(180deg,var(--dark2),var(--dark3));border-left:2px solid var(--border);display:flex;flex-direction:column;overflow:hidden;box-shadow:-4px 0 24px rgba(0,0,0,.5);}
+
+.weather-box{
+  padding:14px 14px 16px;border-bottom:2px solid var(--border);
+  background:linear-gradient(160deg,#0a1e3c,#112040);
+  position:relative;overflow:hidden;flex-shrink:0;
+}
+.weather-box::before{content:'';position:absolute;top:-30px;right:-30px;width:100px;height:100px;background:radial-gradient(circle,rgba(255,215,0,.07) 0%,transparent 70%);border-radius:50%;}
+.w-lbl{font-family:'Nunito',sans-serif;font-size:11px;font-weight:600;color:rgba(255,215,0,.8);letter-spacing:2px;text-transform:uppercase;margin-bottom:10px;display:flex;align-items:center;gap:6px;}
+.w-lbl::after{content:'';flex:1;height:1px;background:linear-gradient(90deg,rgba(255,215,0,.3),transparent);}
+.w-body{display:flex;align-items:center;gap:12px;}
+.w-icon{font-size:44px;line-height:1;filter:drop-shadow(0 2px 8px rgba(0,0,0,.5));}
+.w-city{font-family:'Nunito',sans-serif;font-size:13px;font-weight:700;color:rgba(255,255,255,.9);letter-spacing:2px;text-transform:uppercase;line-height:1;}
+.w-temp{font-family:'Nunito',sans-serif;font-size:38px;font-weight:700;color:var(--gold);line-height:1;text-shadow:0 0 16px rgba(255,215,0,.5);}
+.w-desc{font-size:11px;color:rgba(255,255,255,.5);margin-top:2px;}
+
+.ap{flex:1;min-height:0;display:flex;flex-direction:column;overflow:hidden;}
+.ap-hdr{
+  background:linear-gradient(90deg,#002a55,#004090);
+  padding:9px 14px;font-family:'Nunito',sans-serif;font-size:13px;
+  font-weight:700;letter-spacing:2px;text-transform:uppercase;
+  display:flex;align-items:center;gap:8px;border-bottom:2px solid var(--gold);flex-shrink:0;
+}
+.ap-pulse{width:8px;height:8px;background:var(--gold);border-radius:50%;box-shadow:0 0 6px var(--gold);animation:apPulse 1.4s ease-in-out infinite;flex-shrink:0;}
+@keyframes apPulse{0%,100%{transform:scale(1);opacity:1;}50%{transform:scale(1.5);opacity:.5;}}
+
+.ap-add-btn{
+  margin-left:auto;width:20px;height:20px;background:rgba(255,215,0,.15);
+  border:1px solid rgba(255,215,0,.3);border-radius:4px;color:var(--gold);
+  font-size:14px;display:flex;align-items:center;justify-content:center;
+  cursor:pointer;transition:background .15s;line-height:1;
+}
+.ap-add-btn:hover{background:rgba(255,215,0,.3);}
+
+.ap-feed{flex:1;overflow:hidden;position:relative;}
+.ap-scroll{display:flex;flex-direction:column;}
+.ap-scroll.animating{animation:apScroll 32s linear infinite;}
+@keyframes apScroll{0%{transform:translateY(0);}100%{transform:translateY(-50%);}}
+
+.ap-item{
+  padding:10px 14px;border-bottom:1px solid rgba(255,255,255,.06);
+  position:relative;transition:background .2s;cursor:pointer;
+}
+.ap-item::before{content:'';position:absolute;left:0;top:0;bottom:0;width:3px;}
+.ap-item.ti::before{background:#2196f3;}
+.ap-item.tw::before{background:var(--gold);}
+.ap-item.ts::before{background:#4caf50;}
+.ap-item.te::before{background:#9c27b0;}
+.ap-item:hover{background:rgba(255,255,255,.04);}
+.ap-type{font-size:9px;font-weight:700;letter-spacing:1.5px;text-transform:uppercase;margin-bottom:4px;}
+.ap-item.ti .ap-type{color:#64b5f6;}
+.ap-item.tw .ap-type{color:var(--gold);}
+.ap-item.ts .ap-type{color:#81c784;}
+.ap-item.te .ap-type{color:#ce93d8;}
+.ap-text{font-size:12px;color:rgba(255,255,255,.85);line-height:1.45;margin-bottom:4px;}
+.ap-date{font-size:10px;color:var(--muted);}
+
+/* ═══ FOOTER ═══ */
+.footer{height:46px;display:flex;align-items:stretch;flex-shrink:0;border-top:2px solid var(--border);overflow:hidden;box-shadow:0 -4px 18px rgba(0,0,0,.5);}
+.tick-lbl{
+  background:linear-gradient(90deg,var(--red1),var(--red2));
+  padding:0 18px;display:flex;align-items:center;gap:8px;
+  font-family:'Nunito',sans-serif;font-size:13px;font-weight:700;
+  letter-spacing:2px;white-space:nowrap;flex-shrink:0;
+  border-right:2px solid var(--gold);text-transform:uppercase;
+}
+.tick-wrap{flex:1;overflow:hidden;background:linear-gradient(90deg,#08091c,#0d1428);position:relative;display:flex;align-items:center;}
+.tick-wrap::before,.tick-wrap::after{content:'';position:absolute;top:0;bottom:0;width:40px;z-index:2;pointer-events:none;}
+.tick-wrap::before{left:0;background:linear-gradient(90deg,#08091c,transparent);}
+.tick-wrap::after{right:0;background:linear-gradient(-90deg,#08091c,transparent);}
+.tick-track{display:flex;align-items:center;white-space:nowrap;animation:tickScroll 55s linear infinite;}
+.t-item{font-family:'Nunito',sans-serif;font-size:15px;font-weight:500;color:#ccd6f6;padding:0 30px;}
+.t-sep{color:var(--gold);font-size:16px;font-weight:700;padding:0 4px;flex-shrink:0;}
+@keyframes tickScroll{0%{transform:translateX(100vw);}100%{transform:translateX(-100%);}}
+.foot-brand{background:linear-gradient(135deg,#06070e,#100e22);padding:0 18px;border-left:2px solid var(--border);display:flex;align-items:center;flex-shrink:0;gap:6px;}
+.foot-dot{width:8px;height:8px;border-radius:50%;background:var(--red2);box-shadow:0 0 6px var(--red2);animation:apPulse 2s infinite;}
+.foot-brand span{font-family:'Nunito',sans-serif;font-size:15px;font-weight:700;color:var(--red2);letter-spacing:1px;text-shadow:0 0 10px rgba(229,57,53,.5);}
+/* ── Veri butonları ── */
+.foot-data-btns{display:flex;align-items:center;gap:6px;padding:0 14px;border-left:2px solid var(--border);flex-shrink:0;}
+.foot-btn{
+  height:28px;padding:0 11px;border-radius:4px;border:none;
+  font-family:'Nunito',sans-serif;font-size:11px;font-weight:700;
+  letter-spacing:1.2px;cursor:pointer;display:flex;align-items:center;gap:5px;
+  transition:opacity .15s,transform .1s;white-space:nowrap;
+}
+.foot-btn:hover{opacity:.85;transform:translateY(-1px);}
+.foot-btn:active{transform:translateY(0);}
+.foot-btn.export{background:linear-gradient(135deg,#1a3a8f,#0055cc);color:#fff;box-shadow:0 2px 8px rgba(0,85,204,.4);}
+.foot-btn.import{background:linear-gradient(135deg,#1b5e20,#2e7d32);color:#fff;box-shadow:0 2px 8px rgba(46,125,50,.4);}
+.foot-btn.edit-btn{
+  background:linear-gradient(135deg,#7c3c00,#c85a00);
+  color:#fff;box-shadow:0 2px 10px rgba(200,90,0,.45);
+  border:1px solid rgba(255,165,0,.35);
+  font-size:12px;padding:0 16px;height:30px;
+  position:relative;overflow:hidden;
+}
+.foot-btn.edit-btn::before{
+  content:'';position:absolute;inset:0;
+  background:linear-gradient(90deg,transparent,rgba(255,255,255,.12),transparent);
+  transform:translateX(-100%);transition:transform .4s;
+}
+.foot-btn.edit-btn:hover::before{transform:translateX(100%);}
+.foot-btn.edit-btn:hover{opacity:1;background:linear-gradient(135deg,#a04e00,#e06800);box-shadow:0 4px 16px rgba(220,100,0,.6);}
+/* Toast bildirimi */
+.pano-toast{
+  position:fixed;bottom:60px;left:50%;transform:translateX(-50%) translateY(20px);
+  background:rgba(20,30,60,.95);border:1px solid var(--border);border-radius:6px;
+  padding:10px 22px;font-family:'Nunito',sans-serif;font-size:13px;letter-spacing:1px;
+  color:#fff;z-index:99999;opacity:0;transition:opacity .3s,transform .3s;pointer-events:none;
+  box-shadow:0 8px 24px rgba(0,0,0,.6);
+}
+.pano-toast.show{opacity:1;transform:translateX(-50%) translateY(0);}
+.pano-toast.ok  {border-color:#4caf50;color:#a5d6a7;}
+.pano-toast.err {border-color:#e53935;color:#ef9a9a;}
+
+/* ═══ DERS / TENEFFÜS (SOL PANEL) ═══ */
+.lesson-item{
+  display:flex;align-items:stretch;
+  border-bottom:1px solid rgba(255,255,255,.06);
+  animation:slideInL .35s ease both;
+  overflow:hidden;
+}
+.lesson-item.lesson{background:rgba(0,55,128,.13);}
+.lesson-item.break{background:rgba(255,215,0,.05);}
+.lesson-time{
+  width:72px;flex-shrink:0;display:flex;flex-direction:column;
+  align-items:center;justify-content:center;
+  padding:8px 6px;gap:2px;
+  border-right:2px solid rgba(255,255,255,.08);
+}
+.lesson-item.lesson .lesson-time{border-right-color:rgba(0,100,255,.35);}
+.lesson-item.break  .lesson-time{border-right-color:rgba(255,215,0,.3);}
+.lt-start{font-family:'Nunito',sans-serif;font-size:14px;font-weight:700;color:#fff;line-height:1;}
+.lt-end{font-family:'Nunito',sans-serif;font-size:11px;color:var(--muted);line-height:1;}
+.lesson-body{flex:1;display:flex;flex-direction:column;justify-content:center;padding:7px 10px;gap:3px;}
+.lesson-label{
+  font-family:'Nunito',sans-serif;font-size:11px;font-weight:700;
+  letter-spacing:1.2px;text-transform:uppercase;
+}
+.lesson-item.lesson .lesson-label{color:#6ab0ff;}
+.lesson-item.break  .lesson-label{color:var(--gold);}
+.lesson-num{font-size:10px;color:var(--muted);letter-spacing:.5px;}
+.lesson-dot{
+  width:6px;flex-shrink:0;
+}
+.lesson-item.lesson .lesson-dot{background:rgba(0,120,255,.6);}
+.lesson-item.break  .lesson-dot{background:rgba(255,215,0,.5);}
+
+/* aktif ders/teneffüs vurgusu */
+.lesson-item.active-row{
+  background:rgba(255,215,0,.1)!important;
+  border-left:3px solid var(--gold);
+}
+.lesson-item.active-row .lesson-label{color:var(--gold)!important;}
+
+/* ═══ NÖBETÇİ ÖĞRETMENLER — MERKEZ ALT TABLO ═══ */
+.duty-box{
+  flex-shrink:0;
+  border-top:2px solid var(--border);
+  background:linear-gradient(180deg,#07112a,#0a1628);
+  overflow:hidden;
+}
+#dutyBoxCenter{
+  flex-shrink:0;
+  display:flex;
+  flex-direction:column;
+}
+.duty-hdr{
+  background:linear-gradient(90deg,var(--red1),var(--red2));
+  padding:7px 14px;font-family:'Nunito',sans-serif;font-size:12px;
+  font-weight:800;letter-spacing:2px;text-transform:uppercase;
+  display:flex;align-items:center;gap:8px;
+  border-bottom:2px solid var(--gold);flex-shrink:0;
+}
+.duty-pulse{width:7px;height:7px;background:var(--gold);border-radius:50%;box-shadow:0 0 5px var(--gold);animation:apPulse 1.4s ease-in-out infinite;flex-shrink:0;}
+
+/* ── Tablo sarmalayıcı ── */
+.duty-table-wrap{
+  flex:1;overflow-y:auto;overflow-x:hidden;
+}
+.duty-table-wrap::-webkit-scrollbar{width:3px;}
+.duty-table-wrap::-webkit-scrollbar-thumb{background:rgba(255,215,0,.25);border-radius:2px;}
+
+/* ── Tablo kendisi ── */
+.duty-table{
+  width:100%;border-collapse:collapse;table-layout:fixed;
+}
+.duty-table thead{position:sticky;top:0;z-index:2;}
+.duty-table thead tr{
+  background:linear-gradient(90deg,rgba(0,40,100,.95),rgba(0,60,140,.95));
+  border-bottom:1px solid rgba(255,215,0,.35);
+}
+.duty-table th{
+  font-family:'Nunito',sans-serif;font-size:9px;font-weight:800;
+  color:rgba(255,215,0,.85);letter-spacing:2px;text-transform:uppercase;
+  padding:6px 10px;text-align:left;
+}
+.duty-table th:first-child{width:38px;text-align:center;}
+.duty-table th:last-child{width:90px;}
+
+.duty-table tbody tr{
+  border-bottom:1px solid rgba(255,255,255,.055);
+  transition:background .15s;
+  animation:slideInL .3s ease both;
+}
+.duty-table tbody tr:hover{background:rgba(255,215,0,.06);}
+.duty-table tbody tr:nth-child(even){background:rgba(255,255,255,.025);}
+.duty-table tbody tr:nth-child(even):hover{background:rgba(255,215,0,.07);}
+
+.duty-table td{
+  padding:7px 10px;vertical-align:middle;
+}
+.duty-table td:first-child{text-align:center;}
+
+/* sıra numarası rozeti */
+.dt-num{
+  display:inline-flex;align-items:center;justify-content:center;
+  width:22px;height:22px;border-radius:50%;
+  background:linear-gradient(135deg,rgba(255,215,0,.18),rgba(255,215,0,.06));
+  border:1px solid rgba(255,215,0,.35);
+  font-family:'Nunito',sans-serif;font-size:10px;font-weight:800;
+  color:var(--gold);line-height:1;
+}
+/* isim hücresi */
+.dt-name{
+  display:flex;align-items:center;gap:8px;
+}
+.dt-icon{font-size:14px;flex-shrink:0;}
+.dt-name-text{
+  font-family:'Nunito',sans-serif;font-size:12px;font-weight:700;
+  color:#e8eaf6;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;
+}
+/* konum rozeti */
+.dt-floor{
+  display:inline-flex;align-items:center;
+  font-family:'Nunito',sans-serif;font-size:10px;font-weight:800;
+  background:rgba(255,215,0,.12);border:1px solid rgba(255,215,0,.3);
+  border-radius:5px;padding:2px 8px;color:var(--gold);
+  letter-spacing:.5px;white-space:nowrap;
+}
+.dt-floor-empty{
+  font-size:10px;color:var(--muted);opacity:.5;
+}
+
+/* ── Öğretmen tablo (setup) ── */
+.teacher-table{width:100%;border-collapse:collapse;margin-top:4px;}
+.teacher-table th{
+  font-family:'Nunito',sans-serif;font-size:10px;font-weight:700;
+  color:var(--muted);letter-spacing:1.5px;text-transform:uppercase;
+  padding:4px 6px;text-align:left;border-bottom:1px solid rgba(255,255,255,.1);
+}
+.teacher-table td{padding:3px 3px;}
+.teacher-table input{
+  width:100%;background:rgba(255,255,255,.06);border:1px solid rgba(255,255,255,.1);
+  border-radius:3px;color:#fff;font-family:'Nunito',sans-serif;
+  font-size:13px;padding:5px 7px;outline:none;transition:border .15s;
+}
+.teacher-table input:focus{border-color:rgba(99,179,237,.6);}
+.teacher-table input.floor-input{width:72px;}
+.teacher-table .del-row{
+  cursor:pointer;color:var(--muted);font-size:13px;padding:0 4px;
+  transition:color .15s;background:none;border:none;
+}
+.teacher-table .del-row:hover{color:var(--red2);}
+.teacher-tbl-wrap{overflow-x:auto;}
+.teacher-add-row{margin-top:8px;display:flex;gap:7px;}
+
+/* ── Setup İndir/Yükle butonları ── */
+.setup-data-bar{
+  display:flex;align-items:center;gap:10px;
+  margin-bottom:18px;padding:12px 16px;
+  background:rgba(255,215,0,.04);
+  border:1px solid rgba(255,215,0,.18);border-radius:6px;
+}
+.setup-data-bar span{
+  font-family:'Nunito',sans-serif;font-size:11px;color:var(--muted);
+  letter-spacing:1.5px;text-transform:uppercase;margin-right:auto;
+}
+.btn-data{
+  height:30px;padding:0 14px;border-radius:4px;border:none;
+  font-family:'Nunito',sans-serif;font-size:11px;font-weight:700;
+  letter-spacing:1.2px;cursor:pointer;display:inline-flex;align-items:center;
+  gap:5px;transition:opacity .15s,transform .1s;white-space:nowrap;
+}
+.btn-data:hover{opacity:.85;transform:translateY(-1px);}
+.btn-data.export{background:linear-gradient(135deg,#1a3a8f,#0055cc);color:#fff;box-shadow:0 2px 8px rgba(0,85,204,.4);}
+.btn-data.import{background:linear-gradient(135deg,#1b5e20,#2e7d32);color:#fff;box-shadow:0 2px 8px rgba(46,125,50,.4);}
+
+#boardWrap{display:none;flex-direction:column;flex:1;overflow:hidden;}
+#boardWrap.visible{display:flex;}
+/* ═══ ANIMATIONS ═══ */
+@keyframes slideInL{from{opacity:0;transform:translateX(-16px);}to{opacity:1;transform:translateX(0);}}
+
+/* ═══ PREMIUM UPGRADES ═══ */
+
+/* Geliştirilmiş sol panel başlığı */
+.ph{
+  background:linear-gradient(90deg,#8b0000 0%,var(--red1) 40%,var(--red2) 70%,var(--red1) 100%);
+  padding:12px 14px;font-family:'Nunito',sans-serif;font-size:12px;font-weight:700;
+  letter-spacing:2.5px;text-transform:uppercase;display:flex;align-items:center;gap:8px;
+  border-bottom:2px solid var(--gold);overflow:hidden;position:relative;flex-shrink:0;
+  box-shadow:0 3px 14px rgba(0,0,0,.5);
+}
+.ph::before{content:'';position:absolute;inset:0;background:repeating-linear-gradient(60deg,transparent,transparent 18px,rgba(255,255,255,.03) 18px,rgba(255,255,255,.03) 36px);}
+.ph::after{content:'';position:absolute;right:0;top:0;bottom:0;width:40%;background:linear-gradient(90deg,transparent,rgba(255,255,255,.07));animation:phSheen 4s ease-in-out infinite;}
+
+/* Geliştirilmiş aktif ders vurgusu */
+.lesson-item.active-row{
+  background:linear-gradient(90deg,rgba(255,215,0,.13),rgba(255,215,0,.05))!important;
+  border-left:4px solid var(--gold);
+  box-shadow:inset 3px 0 12px rgba(255,215,0,.1);
+}
+.lesson-item.active-row .lesson-label{
+  color:var(--gold)!important;
+  text-shadow:0 0 8px rgba(255,215,0,.5);
+}
+.lesson-item.active-row .lt-start{color:var(--gold);}
+
+/* Ders zaman bloğu renklendirme */
+.lesson-item.lesson .lesson-time{background:rgba(0,60,160,.15);}
+.lesson-item.break .lesson-time{background:rgba(255,215,0,.07);}
+
+/* Hava durumu geliştirilmiş */
+.weather-box{
+  background:linear-gradient(135deg,rgba(0,30,80,.9),rgba(0,15,50,.95));
+  border-bottom:2px solid var(--border);padding:14px;flex-shrink:0;
+  position:relative;overflow:hidden;cursor:pointer;
+}
+.weather-box::before{
+  content:'';position:absolute;inset:0;
+  background:radial-gradient(ellipse at 80% 50%,rgba(255,215,0,.06),transparent 70%);
+  pointer-events:none;
+}
+
+/* Setup kart hover efekti */
+.setup-card:hover{box-shadow:0 6px 28px rgba(0,0,0,.4),0 0 0 1px rgba(255,215,0,.15),inset 0 1px 0 rgba(255,255,255,.07);}
+
+/* Setup form alanları iyileştirilmiş */
+.sf input,.sf textarea{
+  background:rgba(255,255,255,.07);border:1px solid rgba(255,215,0,.22);
+  border-radius:5px;transition:border .2s,box-shadow .2s,background .2s;
+}
+.sf input:hover,.sf textarea:hover{background:rgba(255,255,255,.1);border-color:rgba(255,215,0,.35);}
+.sf input:focus,.sf textarea:focus{
+  background:rgba(255,255,255,.09);
+  border-color:rgba(99,179,237,.75);
+  box-shadow:0 0 0 3px rgba(99,179,237,.12);
+}
+
+/* Duyuru paneli geliştirilmiş */
+.ap-hdr{
+  background:linear-gradient(90deg,#003580 0%,#0055b3 60%,#003580 100%);
+  padding:9px 14px;font-family:'Nunito',sans-serif;font-size:12px;
+  font-weight:700;letter-spacing:2.5px;text-transform:uppercase;
+  display:flex;align-items:center;gap:8px;
+  border-bottom:2px solid var(--gold);flex-shrink:0;
+  box-shadow:0 3px 10px rgba(0,0,0,.4);
+}
+
+/* Footer geliştirilmiş */
+.footer{
+  height:48px;display:flex;align-items:stretch;flex-shrink:0;
+  border-top:2px solid var(--border);overflow:hidden;
+  box-shadow:0 -4px 24px rgba(0,0,0,.6),0 -1px 0 rgba(255,215,0,.15);
+  background:linear-gradient(180deg,#0a0c1e,#07091a);
+}
+.tick-lbl{
+  background:linear-gradient(90deg,#8b0000,var(--red2));
+  padding:0 18px;display:flex;align-items:center;gap:8px;
+  font-family:'Nunito',sans-serif;font-size:12px;font-weight:700;
+  letter-spacing:2.5px;white-space:nowrap;flex-shrink:0;
+  border-right:2px solid var(--gold);text-transform:uppercase;
+  box-shadow:2px 0 12px rgba(183,28,28,.3);
+}
+.foot-brand span{
+  font-family:'Nunito',sans-serif;font-size:14px;font-weight:700;
+  color:var(--red2);letter-spacing:1.5px;
+  text-shadow:0 0 12px rgba(229,57,53,.6);
+}
+
+/* Block btn hover glow */
+.block-btn.selected .bb-icon{filter:drop-shadow(0 0 6px rgba(255,215,0,.5));}
+
+/* Teacher name items geliştirilmiş */
+.duty-name-item:hover{background:rgba(255,255,255,.04);}
+
+/* Scroll butonlar yok, ama scrollbar iyileştirilmiş */
+.ap-feed::-webkit-scrollbar{width:2px;}
+.ap-feed::-webkit-scrollbar-thumb{background:rgba(255,215,0,.2);border-radius:2px;}
+
+/* ══════════════════════════════════════════════════
+   NUNITO & DESIGN UPGRADE v7
+══════════════════════════════════════════════════ */
+
+/* ── Nunito font ağırlık ayarları ── */
+.h-name{font-weight:800;font-size:23px;letter-spacing:2.5px;}
+.h-sub{font-size:11px;font-weight:600;letter-spacing:3px;}
+.h-time{font-weight:800;font-size:30px;}
+.h-date{font-weight:700;font-size:15px;}
+
+/* ── Header şekil iyileştirmesi ── */
+.header{height:72px;border-bottom:2px solid var(--gold);}
+.hbg{background:linear-gradient(105deg,#000c28 0%,#001e6e 28%,#003baa 50%,#001e6e 72%,#000c28 100%);}
+.hbg::before{background:repeating-linear-gradient(52deg,transparent,transparent 18px,rgba(255,255,255,.022) 18px,rgba(255,255,255,.022) 36px);}
+.h-emblem{width:52px;height:52px;border-radius:14px;}
+.h-logo{border-left:2px solid var(--gold);border-right:2px solid var(--gold);}
+.h-date{border-left:2px solid var(--gold);font-size:15px;}
+.h-time{border-left:2px solid var(--gold);min-width:120px;}
+
+/* ── Sol panel başlığı ── */
+.ph{
+  padding:13px 16px;
+  font-size:11px;font-weight:800;letter-spacing:2.5px;
+  background:linear-gradient(90deg,#8b0000 0%,var(--red1) 40%,var(--red2) 70%,var(--red1) 100%);
+  border-bottom:2px solid var(--gold);
+  border-radius:0;
+}
+
+/* ── Ders/Teneffüs satırları ── */
+.lesson-item{border-bottom:1px solid rgba(255,255,255,.055);}
+.lesson-time{width:68px;padding:10px 6px;}
+.lt-start{font-size:14px;font-weight:800;}
+.lt-end{font-size:11px;font-weight:600;}
+.lesson-label{font-size:11px;font-weight:800;letter-spacing:1px;}
+.lesson-num{font-size:10px;font-weight:600;}
+.lesson-dot{width:4px;}
+
+/* ── Aktif ders şerit ── */
+.lesson-item.active-row{
+  background:linear-gradient(90deg,rgba(255,215,0,.15),rgba(255,215,0,.04))!important;
+  border-left:4px solid var(--gold);
+  box-shadow:inset 4px 0 16px rgba(255,215,0,.12);
+}
+.lesson-item.active-row .lesson-label{
+  color:var(--gold)!important;
+  text-shadow:0 0 10px rgba(255,215,0,.6);
+}
+.lesson-item.active-row .lt-start{color:var(--gold);}
+
+/* ── Merkez saat çubuğu ── */
+.center-clock-bar{height:200px;}
+.ccb-clock{
+  font-size:130px;font-weight:800;letter-spacing:6px;
+  text-shadow:0 0 40px rgba(255,215,0,1),0 0 80px rgba(255,215,0,.5),0 0 120px rgba(255,215,0,.25);
+}
+.ccb-sess-label{font-size:34px;font-weight:800;letter-spacing:1.5px;}
+.ccb-sess-times{font-size:22px;font-weight:600;letter-spacing:1.5px;color:rgba(255,255,255,.6);}
+.ccb-sess-remain{font-size:19px;font-weight:700;color:rgba(255,255,255,.5);}
+
+/* ── Progress bar ── */
+.ccb-progress-wrap{height:7px;border-radius:4px;margin-top:4px;}
+.ccb-progress-bar{height:100%;border-radius:4px;box-shadow:0 0 12px rgba(255,215,0,.8);}
+
+/* ── Slayt başlıkları ── */
+.s-title{font-size:48px;font-weight:800;letter-spacing:3px;}
+.s-sub{font-size:16px;font-weight:500;letter-spacing:1.5px;}
+.ac-title{font-size:30px;font-weight:800;letter-spacing:1.5px;}
+.ac-body{font-size:15px;font-weight:500;line-height:1.8;}
+.ac-tag{font-size:11px;font-weight:700;letter-spacing:2px;border-radius:4px;padding:5px 14px;}
+.ac-meta{font-size:12px;font-weight:600;letter-spacing:.5px;}
+
+/* ── Nokta kılavuzu (slide) ── */
+.dot{width:8px;height:8px;border-radius:50%;}
+.dot.active{width:26px;border-radius:5px;}
+
+/* ── Sağ panel hava ── */
+.w-city{font-size:12px;font-weight:800;letter-spacing:2.5px;}
+.w-temp{font-size:40px;font-weight:800;}
+.w-desc{font-size:11px;font-weight:600;}
+.w-lbl{font-size:10px;font-weight:700;letter-spacing:2px;}
+
+/* ── Duyuru paneli ── */
+.ap-hdr{
+  padding:10px 14px;font-size:12px;font-weight:800;letter-spacing:2.5px;
+  border-bottom:2px solid var(--gold);
+  background:linear-gradient(90deg,#002a55 0%,#004090 60%,#002a55 100%);
+}
+.ap-type{font-size:9px;font-weight:800;letter-spacing:2px;}
+.ap-text{font-size:12px;font-weight:600;line-height:1.5;}
+.ap-date{font-size:10px;font-weight:600;}
+
+/* ── Nöbetçi öğretmenler tablo (upgrade) ── */
+.duty-hdr{
+  padding:9px 14px;font-size:12px;font-weight:800;letter-spacing:2px;
+  border-bottom:2px solid var(--gold);
+}
+.duty-table th{font-size:9px;font-weight:800;letter-spacing:2px;}
+.duty-table td{padding:6px 10px;}
+.dt-num{font-size:10px;font-weight:800;}
+.dt-name-text{font-size:12px;font-weight:700;}
+.dt-floor{font-size:10px;font-weight:800;}
+
+/* ── Footer ticker ── */
+.tick-lbl{
+  font-size:11px;font-weight:800;letter-spacing:2.5px;
+  padding:0 18px;border-right:2px solid var(--gold);
+  background:linear-gradient(90deg,#8b0000,var(--red2));
+  box-shadow:2px 0 14px rgba(183,28,28,.35);
+}
+.t-item{font-size:14px;font-weight:600;color:#ccd6f6;}
+.t-sep{color:var(--gold);font-size:14px;font-weight:800;}
+.foot-brand span{font-size:14px;font-weight:800;letter-spacing:1.5px;}
+
+/* ── Footer buton ── */
+.foot-btn{border-radius:var(--radius-sm);height:30px;font-size:11px;font-weight:800;letter-spacing:1px;}
+.foot-btn.edit-btn{
+  background:linear-gradient(135deg,#7c3c00,#c85a00);
+  border:1px solid rgba(255,165,0,.35);
+  border-radius:var(--radius-sm);
+  box-shadow:0 2px 12px rgba(200,90,0,.4);
+}
+
+/* ── Setup ekranı ── */
+.setup-logo h1{font-size:26px;font-weight:800;letter-spacing:3.5px;}
+.setup-logo p{font-size:11px;font-weight:600;letter-spacing:2px;}
+.sc-title{font-size:11px;font-weight:800;letter-spacing:2.5px;}
+.sf label{font-size:10px;font-weight:700;letter-spacing:1.5px;}
+.sf input,.sf textarea{font-size:14px;font-weight:500;border-radius:var(--radius-sm);}
+.setup-card{border-radius:var(--radius);border-top-left-radius:var(--radius);border-top-right-radius:var(--radius);}
+.block-btn .bb-label{font-size:11px;font-weight:800;letter-spacing:.8px;}
+.block-btn .bb-sub{font-size:9px;font-weight:600;}
+.btn-start{
+  font-size:17px;font-weight:800;letter-spacing:3px;
+  border-radius:var(--radius);
+  padding:16px 64px;
+}
+.btn-add-row{font-size:10px;font-weight:800;letter-spacing:1px;border-radius:var(--radius-sm);}
+.btn-data{font-size:11px;font-weight:800;letter-spacing:1px;border-radius:var(--radius-sm);}
+.setup-back-btn{font-size:11px;font-weight:800;letter-spacing:1.5px;}
+
+/* ── Edit modal ── */
+.edit-box h3{font-size:14px;font-weight:800;letter-spacing:2px;}
+.edit-field label{font-size:11px;font-weight:700;letter-spacing:1.5px;}
+.edit-field input,.edit-field textarea,.edit-field select{font-size:14px;font-weight:500;}
+.btn-save{font-size:13px;font-weight:800;letter-spacing:1.5px;border-radius:var(--radius-sm);}
+.btn-cancel{font-size:13px;font-weight:700;letter-spacing:.8px;border-radius:var(--radius-sm);}
+
+/* ── Bölüm başlıkları ── */
+.d-badge{font-size:11px;font-weight:800;letter-spacing:.5px;border-radius:var(--radius-sm);}
+.d-role{font-size:10px;font-weight:700;letter-spacing:1px;}
+.d-num{font-size:24px;font-weight:800;}
+
+/* ── Slayt kart şekilleri modernize ── */
+.ac{border-radius:var(--radius-lg);border-top-left-radius:var(--radius-lg);border-top-right-radius:var(--radius-lg);}
+.ac-tag{border-radius:5px;}
+
+/* ── Hava durumu kutusu ── */
+.weather-box{border-radius:0;}
+
+/* ── Panel başlık şeritleri ── */
+.ph,.ap-hdr,.duty-hdr{letter-spacing:2.5px;}
+
+/* ── Editable hover ── */
+.editable:hover::after{font-size:10px;border-radius:4px;font-weight:700;}
+
+/* ── Toast bildirimi ── */
+.pano-toast{font-size:13px;font-weight:700;letter-spacing:.5px;border-radius:var(--radius-sm);}
+
+/* ── Sch tablo ── */
+.sch-table th{font-size:10px;font-weight:800;letter-spacing:2px;}
+.sch-table input{font-size:12px;font-weight:600;border-radius:4px;}
+.teacher-table th{font-size:10px;font-weight:800;letter-spacing:2px;}
+.teacher-table input{font-size:13px;font-weight:600;border-radius:4px;}
+
+/* ── Genel kart iyileştirme ── */
+.setup-card{
+  border-top:3px solid var(--gold);
+  border-radius:var(--radius);
+  background:linear-gradient(135deg,rgba(255,255,255,.065),rgba(255,255,255,.02));
+}
+.setup-card:hover{
+  box-shadow:0 8px 32px rgba(0,0,0,.45),0 0 0 1px rgba(255,215,0,.18),inset 0 1px 0 rgba(255,255,255,.08);
+}
+
+/* ── Slayt altyazı (sub) Nunito ── */
+.s-sub{font-family:'Nunito',sans-serif;}
+
+/* ── Left panel genişliği ── */
+.left-panel{width:232px;}
+.right-panel{width:218px;}
+
+/* ── Scrollbar ince ── */
+.duty-list::-webkit-scrollbar{width:3px;}
+.duty-list::-webkit-scrollbar-thumb{background:rgba(255,215,0,.25);border-radius:2px;}
+
+</style>
+</head>
+<body>
+
+<!-- ══════════════════ SETUP EKRANI ══════════════════ -->
+<div id="setupScreen">
+<div class="setup-wrap">
+
+  <div class="setup-logo">
+    <div id="setupBackBtn" class="setup-back-btn" onclick="backToBoard()" style="display:none;" title="Pano ekranına geri dön">← Panoya Dön</div>
+    <div class="sl-logo-wrap">
+      <img src="logo.png" alt="Logo" class="sl-logo-img" onerror="this.style.display='none';document.getElementById('slLogoFallback').style.display='block';">
+      <span id="slLogoFallback" class="sl-icon" style="display:none;">🏫</span>
+    </div>
+    <h1>MuGöl Dijital Pano</h1>
+    <p>Panoyu başlatmadan önce bilgileri doldurun</p>
+  </div>
+
+  <!-- Veri İndir / Yükle -->
+  <div class="setup-data-bar">
+    <span>📁 Veri Dosyası</span>
+    <button class="btn-data export" onclick="exportDataJs()">⬇ İndir</button>
+    <button class="btn-data import" onclick="document.getElementById('setupImportInput').click()">⬆ Yükle</button>
+    <input type="file" id="setupImportInput" accept=".js" style="display:none" onchange="setupImportDataJs(this)">
+  </div>
+
+  <div class="setup-grid">
+
+    <!-- Okul Bilgileri -->
+    <div class="setup-card">
+      <div class="sc-title"><span>🏫</span> Okul Bilgileri</div>
+      <div class="sf">
+        <label>Okul / Pano Adı</label>
+        <input type="text" id="s_schoolName" placeholder="MuGöl Dijital Pano">
+      </div>
+      <div class="sf">
+        <label>Alt Başlık</label>
+        <input type="text" id="s_schoolSub" placeholder="Dijital Bilgi Panosu">
+      </div>
+    </div>
+
+    <!-- Hava Durumu -->
+    <div class="setup-card">
+      <div class="sc-title"><span>🌤</span> Hava Durumu</div>
+      <div class="sf">
+        <label>Şehir Adı (Türkçe)</label>
+        <input type="text" id="s_wCity" placeholder="İstanbul">
+      </div>
+      <div class="sf">
+        <div id="weatherPreview" style="display:none;background:rgba(255,255,255,.04);border:1px solid rgba(255,215,0,.2);border-radius:4px;padding:10px 12px;display:flex;align-items:center;gap:10px;">
+          <span id="wpIcon" style="font-size:32px;"></span>
+          <div>
+            <div id="wpTemp" style="font-family:'Nunito',sans-serif;font-size:22px;color:var(--gold);"></div>
+            <div id="wpDesc" style="font-size:11px;color:var(--muted);"></div>
+          </div>
+          <span id="wpStatus" style="margin-left:auto;font-size:10px;color:#4caf50;letter-spacing:1px;"></span>
+        </div>
+        <div id="weatherMsg" style="font-size:11px;color:var(--muted);margin-top:4px;"></div>
+      </div>
+      <div class="sf">
+        <button class="btn-add-row" style="width:100%;padding:7px;" onclick="fetchWeatherPreview()">🔍 Hava Durumunu Getir</button>
+      </div>
+      <div class="sf-hint">Meteoroloji (Open-Meteo) verisi · Otomatik güncellenir</div>
+    </div>
+
+    <!-- Nöbetçi Öğretmenler -->
+    <div class="setup-card full">
+      <div class="sc-title"><span>👨‍🏫</span> Nöbetçi Öğretmenler</div>
+      <div class="sf">
+        <div class="teacher-tbl-wrap">
+          <table class="teacher-table" id="teacherTable">
+            <thead>
+              <tr>
+                <th style="width:38px;">#</th>
+                <th>Ad Soyad</th>
+                <th style="width:90px;">Kat / Konum</th>
+                <th style="width:28px;"></th>
+              </tr>
+            </thead>
+            <tbody id="teacherTbody"></tbody>
+          </table>
+        </div>
+        <div class="teacher-add-row">
+          <button class="btn-add-row" onclick="addTeacherRow()">+ Öğretmen Ekle</button>
+        </div>
+        <div class="sf-hint">Kat/Konum alanına: "1. Kat", "2. Kat", "Bahçe Nöbeti" vb. yazabilirsiniz.</div>
+      </div>
+    </div>
+
+    <!-- Ders & Teneffüs Saatleri -->
+    <div class="setup-card full">
+      <div class="sc-title"><span>🕐</span> Ders &amp; Teneffüs Saatleri</div>
+
+      <!-- Blok Seçici -->
+      <div style="margin-bottom:14px;">
+        <div style="font-size:10px;color:var(--muted);letter-spacing:1.5px;text-transform:uppercase;margin-bottom:8px;">Hızlı Şablon Seç</div>
+        <div class="block-selector">
+          <div class="block-btn selected" onclick="selectBlock(this,'standard')" data-block="standard">
+            <span class="bb-icon">📚</span>
+            <span class="bb-label">Standart</span>
+            <span class="bb-sub">8 ders · 40+10dk</span>
+          </div>
+          <div class="block-btn" onclick="selectBlock(this,'intensive')" data-block="intensive">
+            <span class="bb-icon">⚡</span>
+            <span class="bb-label">Yoğun</span>
+            <span class="bb-sub">10 ders · 40+5dk</span>
+          </div>
+          <div class="block-btn" onclick="selectBlock(this,'block2')" data-block="block2">
+            <span class="bb-icon">🧱</span>
+            <span class="bb-label">Blok (2×40)</span>
+            <span class="bb-sub">5 blok · 80dk</span>
+          </div>
+          <div class="block-btn" onclick="selectBlock(this,'halfday')" data-block="halfday">
+            <span class="bb-icon">🌅</span>
+            <span class="bb-label">Yarım Gün</span>
+            <span class="bb-sub">5 ders · 40+10dk</span>
+          </div>
+          <div class="block-btn" onclick="selectBlock(this,'custom')" data-block="custom">
+            <span class="bb-icon">⚙️</span>
+            <span class="bb-label">Özel</span>
+            <span class="bb-sub">Kendin ayarla</span>
+          </div>
+        </div>
+      </div>
+
+      <!-- Özel Ayarlar (sadece "Özel" seçilince görünür) -->
+      <div class="block-custom" id="customBlockOpts">
+        <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(140px,1fr));gap:12px;margin-bottom:12px;">
+          <div class="sf" style="margin:0">
+            <label>İlk Ders Başlangıcı</label>
+            <input type="time" id="sch_start" value="08:00">
+          </div>
+          <div class="sf" style="margin:0">
+            <label>Ders Süresi (dk)</label>
+            <input type="number" id="sch_lessonMin" value="40" min="10" max="180">
+          </div>
+          <div class="sf" style="margin:0">
+            <label>Teneffüs Süresi (dk)</label>
+            <input type="number" id="sch_breakMin" value="10" min="5" max="30">
+          </div>
+          <div class="sf" style="margin:0">
+            <label>Toplam Ders Sayısı</label>
+            <input type="number" id="sch_count" value="8" min="1" max="14">
+          </div>
+        </div>
+        <div style="display:flex;align-items:center;gap:16px;margin-bottom:12px;padding:10px 12px;background:rgba(255,215,0,.06);border:1px solid rgba(255,215,0,.18);border-radius:6px;">
+          <label style="display:flex;align-items:center;gap:8px;cursor:pointer;font-size:12px;color:var(--text);">
+            <input type="checkbox" id="sch_hasLunch" style="width:16px;height:16px;accent-color:var(--gold);cursor:pointer;">
+            Öğle Arası Var
+          </label>
+          <div id="lunchOpts" style="display:none;display:flex;align-items:center;gap:12px;flex-wrap:wrap;">
+            <div style="display:flex;align-items:center;gap:6px;">
+              <label style="font-size:11px;color:var(--muted);white-space:nowrap;">Kaçıncı dersten sonra?</label>
+              <input type="number" id="sch_lunchAfter" value="5" min="1" max="13" style="width:56px;background:rgba(255,255,255,.06);border:1px solid rgba(255,215,0,.2);border-radius:3px;color:#fff;font-size:13px;padding:4px 6px;outline:none;">
+            </div>
+            <div style="display:flex;align-items:center;gap:6px;">
+              <label style="font-size:11px;color:var(--muted);white-space:nowrap;">Öğle Arası (dk)</label>
+              <input type="number" id="sch_lunchMin" value="30" min="15" max="90" style="width:56px;background:rgba(255,255,255,.06);border:1px solid rgba(255,215,0,.2);border-radius:3px;color:#fff;font-size:13px;padding:4px 6px;outline:none;">
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <div style="display:flex;gap:8px;margin-bottom:12px;align-items:center;flex-wrap:wrap;">
+        <button class="btn-add-row" style="padding:8px 20px;" onclick="applyBlockAndGenerate()">⚙ Programı Oluştur</button>
+        <span id="blockActiveLabel" style="font-size:10px;color:var(--gold);letter-spacing:1px;opacity:.8;">Standart şablon seçili</span>
+      </div>
+      <div id="schPreview" style="font-size:11px;color:var(--muted);overflow-x:auto;"></div>
+    </div>
+
+    <!-- Duyurular -->
+    <div class="setup-card full">
+      <div class="sc-title"><span>📢</span> Duyurular <span style="font-size:10px;color:var(--muted);font-weight:400;letter-spacing:1px;margin-left:4px;">(isteğe bağlı — sonradan eklenebilir)</span></div>
+      <div class="sf">
+        <label>Duyurular (her satıra bir duyuru)</label>
+        <textarea id="s_announcements" rows="4" placeholder="Sınav takvimi ilan edildi&#10;Mezuniyet töreni 20 Haziran'da&#10;Kütüphane 08:00–17:00 açık"></textarea>
+        <div class="sf-hint">Her satır ayrı bir duyuru olarak eklenir.</div>
+      </div>
+    </div>
+
+  </div><!-- /setup-grid -->
+
+  <div class="setup-footer">
+    <button class="btn-start" onclick="startBoard()">🚀 Panoyu Başlat</button>
+    <small>Tüm bilgiler tarayıcıda saklanır · Panodaki her alan ✏ <strong>Düzenle</strong> butonuyla sonradan değiştirilebilir</small>
+  </div>
+
+</div>
+</div>
+<!-- ══════════════════════════════════════════════ -->
+
+<!-- EDIT MODAL -->
+<div class="edit-modal" id="editModal">
+  <div class="edit-backdrop" id="editBackdrop"></div>
+  <div class="edit-box">
+    <h3><span class="edit-icon">✏️</span> <span id="editModalTitle">Düzenle</span></h3>
+    <div id="editFields"></div>
+    <div class="edit-actions">
+      <button class="btn-cancel" id="btnCancel">İptal</button>
+      <button class="btn-save" id="btnSave">Kaydet ✓</button>
+    </div>
+  </div>
+</div>
+
+<!-- BOARD -->
+<div id="boardWrap">
+
+<!-- HEADER -->
+<header class="header">
+  <div class="hbg"></div>
+  <div class="h-school">
+    <div class="h-emblem" id="hEmblem">
+      <img src="logo.png" alt="Logo" id="hLogoImg" onerror="this.style.display='none';document.getElementById('hLogoFallback').style.display='flex';" style="width:100%;height:100%;object-fit:contain;border-radius:50%;">
+      <span id="hLogoFallback" style="display:none;font-size:26px;align-items:center;justify-content:center;width:100%;height:100%;">🏫</span>
+    </div>
+    <div class="h-text editable" id="hdr-school" title="Okul adını düzenle">
+      <div class="h-name" id="schoolName">MuGöl Dijital Pano</div>
+      <div class="h-sub" id="schoolSub">Dijital Bilgi Panosu</div>
+    </div>
+  </div>
+
+  <div class="h-dt">
+    <div class="h-date" id="dateDisplay">Pzt, 25 May 2026</div>
+    <div class="h-time" id="clock">00:00</div>
+  </div>
+</header>
+
+<!-- MAIN -->
+<div class="main">
+
+  <!-- LEFT -->
+  <div class="left-panel">
+    <div class="ph">
+      <div class="ph-icon">🕐</div>
+      Ders &amp; Teneffüs
+    </div>
+    <div class="duty-list" id="dutyList"></div>
+  </div>
+
+  <!-- CENTER -->
+  <div class="center">
+    <!-- Büyük Saat & Oturum Bilgisi -->
+    <div class="center-clock-bar" id="centerClockBar">
+      <div class="ccb-clock" id="ccbClock">00:00</div>
+      <div class="ccb-session" id="ccbSession">
+        <div class="ccb-sess-label" id="ccbLabel">— · —</div>
+        <div class="ccb-sess-times" id="ccbTimes">Başlangıç — Bitiş</div>
+        <div class="ccb-progress-wrap"><div class="ccb-progress-bar" id="ccbBar"></div></div>
+        <div class="ccb-sess-remain" id="ccbRemain">—</div>
+      </div>
+    </div>
+    <!-- Slayt gösterisi -->
+    <div class="slideshow" id="slideshow"></div>
+    <!-- NÖBETÇİ ÖĞRETMENLER — merkez alt -->
+    <div class="duty-box" id="dutyBoxCenter">
+      <div class="duty-hdr">
+        <div class="duty-pulse"></div>
+        Nöbetçi Öğretmenler
+      </div>
+      <div class="duty-table-wrap">
+        <table class="duty-table" id="dutyTableEl">
+          <thead>
+            <tr>
+              <th>#</th>
+              <th>Ad Soyad</th>
+              <th>Konum</th>
+            </tr>
+          </thead>
+          <tbody id="dutyNames"></tbody>
+        </table>
+      </div>
+    </div>
+  </div>
+
+  <!-- RIGHT -->
+  <div class="right-panel">
+    <div class="weather-box editable" id="weather-box" title="Hava durumu düzenle">
+      <div class="w-lbl">🌤 Hava Durumu</div>
+      <div class="w-body">
+        <div class="w-icon" id="wIcon">⛅</div>
+        <div>
+          <div class="w-city" id="wCity">İSTANBUL</div>
+          <div class="w-temp" id="wTemp">19°C</div>
+          <div class="w-desc" id="wDesc">Parçalı bulutlu</div>
+        </div>
+      </div>
+    </div>
+    <div class="ap">
+      <div class="ap-hdr">
+        <div class="ap-pulse"></div>
+        Duyurular
+        <div class="ap-add-btn" id="apAddBtn" title="Duyuru ekle">+</div>
+      </div>
+      <div class="ap-feed"><div class="ap-scroll" id="apScroll"></div></div>
+    </div>
+  </div>
+
+</div>
+
+<!-- FOOTER -->
+<div class="footer">
+  <div class="tick-lbl">📢 DUYURU</div>
+  <div class="tick-wrap">
+    <div class="tick-track" id="tickerTrack"></div>
+  </div>
+  <div class="foot-data-btns">
+    <button class="foot-btn edit-btn" onclick="openSetupEdit()" title="Bilgi girişi ekranına geri dön">✏ Düzenle</button>
+  </div>
+  <div class="foot-brand">
+    <div class="foot-dot"></div>
+    <span>MuGöl Pano</span>
+  </div>
+</div>
+<!-- Toast -->
+<div class="pano-toast" id="panoToast"></div>
+
+</div><!-- /boardWrap -->
+
+<script>
+/* ══════════════════════════════════════════════════
+   DATA LAYER — localStorage persistence
+══════════════════════════════════════════════════ */
+const STORAGE_KEY = 'mugol_pano_v3';
+
+const DEFAULTS = {
+  schoolName: 'MuGöl Dijital Pano',
+  schoolSub:  'Dijital Bilgi Panosu',
+  weather: { city:'İSTANBUL', temp:'19', icon:'⛅', desc:'Parçalı bulutlu' },
+  duty: [],
+  schedule: [
+    { type:'lesson', num:'1. Ders', start:'08:00', end:'08:40' },
+    { type:'break',  num:'Teneffüs', start:'08:40', end:'08:50' },
+    { type:'lesson', num:'2. Ders', start:'08:50', end:'09:30' },
+    { type:'break',  num:'Teneffüs', start:'09:30', end:'09:40' },
+    { type:'lesson', num:'3. Ders', start:'09:40', end:'10:20' },
+    { type:'break',  num:'Uzun Teneffüs', start:'10:20', end:'10:40' },
+    { type:'lesson', num:'4. Ders', start:'10:40', end:'11:20' },
+    { type:'break',  num:'Teneffüs', start:'11:20', end:'11:30' },
+    { type:'lesson', num:'5. Ders', start:'11:30', end:'12:10' },
+    { type:'break',  num:'Öğle Arası', start:'12:10', end:'13:00' },
+    { type:'lesson', num:'6. Ders', start:'13:00', end:'13:40' },
+    { type:'break',  num:'Teneffüs', start:'13:40', end:'13:50' },
+    { type:'lesson', num:'7. Ders', start:'13:50', end:'14:30' },
+    { type:'break',  num:'Teneffüs', start:'14:30', end:'14:40' },
+    { type:'lesson', num:'8. Ders', start:'14:40', end:'15:20' },
+  ],
+  teachers: [
+    {name:'Ali Koç',       floor:'1. Kat'},
+    {name:'Burcu Tok',     floor:'2. Kat'},
+    {name:'Mehmet Yıldız', floor:'1. Kat'},
+    {name:'Ayşe Kara',     floor:'3. Kat'},
+    {name:'Hasan Demir',   floor:'2. Kat'},
+    {name:'Fatma Şahin',   floor:'Bahçe'},
+    {name:'Osman Kurt',    floor:'1. Kat'},
+    {name:'Zeynep Arslan', floor:'3. Kat'},
+    {name:'Mustafa Çelik', floor:'2. Kat'},
+    {name:'Elif Yılmaz',   floor:'Bahçe'},
+  ],
+  announcements: [
+    { type:'tw', typeLabel:'⚠ Önemli',  text:'Sınav takvimi ilan edildi',             date:'25.05.2026' },
+    { type:'te', typeLabel:'📅 Etkinlik',text:'Mezuniyet töreni 20 Haziran\'da',       date:'25.05.2026' },
+    { type:'ti', typeLabel:'📚 Bilgi',   text:'Kütüphane 08:00–17:00 açık',            date:'25.05.2026' },
+    { type:'ts', typeLabel:'🏆 Turnuva', text:'Satranç kayıtları başladı',             date:'24.05.2026' },
+    { type:'ti', typeLabel:'⚽ Spor',    text:'Futbol seçmeleri 28 Mayıs\'ta',         date:'24.05.2026' },
+    { type:'te', typeLabel:'🎨 Sanat',   text:'Resim sergisi 3 Haziran\'da açılıyor',  date:'23.05.2026' },
+    { type:'tw', typeLabel:'📋 İdare',   text:'Devam devamsızlık takibi başladı',      date:'23.05.2026' },
+  ],
+  slides: [
+    { bg:'s1', icon:'🎓', title:'Hoş Geldiniz', sub:'Polatlı Fatih Mesleki ve Teknik Anadolu Lisesi', type:'hero' },
+    { bg:'s2', tag:'📢 Duyuru', tagClass:'red', title:'Dönem Sonu Sınavları', body:'2. Dönem sonu sınavları <strong>2–13 Haziran 2026</strong> tarihleri arasında yapılacaktır.', meta:'📅 25 Mayıs 2026 · Okul İdaresi', type:'card' },
+    { bg:'s3', tag:'📅 Etkinlik', tagClass:'green', title:'Mezuniyet Töreni', body:'12. Sınıf mezuniyet töreni <strong>20 Haziran 2026</strong> Cuma günü saat <strong>14:00</strong>\'da spor salonunda düzenlenecektir.', meta:'📅 20 Haziran 2026 · Saat 14:00 · Spor Salonu', type:'card' },
+    { bg:'s4', tag:'🏆 Turnuva', tagClass:'purple', title:'Satranç Turnuvası', body:'Satranç turnuvası kayıtları başlamıştır. Son başvuru tarihi <strong>28 Mayıs 2026</strong>\'dır. İdare birimine başvurunuz.', meta:'🏫 Son başvuru: 28 Mayıs 2026 · İdare', type:'card' },
+  ],
+  ticker: [
+    '🎓 Sınav tarihleri için öğretmeninizle iletişime geçiniz',
+    '📚 Okul kütüphanesi mesai saatleri: 08:00 – 17:00',
+    '🏆 Satranç turnuvası kayıtları başladı — İdare birimine başvurunuz',
+    '🎨 Resim sergisi 3 Haziran 2026 tarihinde açılıyor',
+    '⚽ Okullar arası futbol turnuvası seçmeleri 28 Mayıs\'ta başlıyor',
+    '🎓 Mezuniyet töreni 20 Haziran 2026 — Spor Salonu — Saat 14:00',
+  ]
+};
+
+function loadData() {
+  try {
+    const s = localStorage.getItem(STORAGE_KEY);
+    return s ? JSON.parse(s) : null;
+  } catch(e) { return null; }
+}
+function saveData(d) {
+  try { localStorage.setItem(STORAGE_KEY, JSON.stringify(d)); } catch(e) {}
+}
+
+function mergeData(saved, defaults) {
+  if (!saved) return JSON.parse(JSON.stringify(defaults));
+  const merged = Object.assign({}, defaults, saved);
+  if (!merged.schedule || !merged.schedule.length) merged.schedule = defaults.schedule;
+  if (!merged.teachers || !merged.teachers.length) merged.teachers = defaults.teachers;
+  // Eski format uyumluluğu: string dizisini objeye çevir
+  if (merged.teachers.length && typeof merged.teachers[0] === 'string') {
+    merged.teachers = merged.teachers.map(n => ({ name: n, floor: '' }));
+  }
+  return merged;
+}
+let DATA = mergeData(loadData(), DEFAULTS);
+
+/* ══════════════════════════════════════════════════
+   RENDER
+══════════════════════════════════════════════════ */
+function render() {
+  // header
+  document.getElementById('schoolName').textContent = DATA.schoolName;
+  document.getElementById('schoolSub').textContent  = DATA.schoolSub;
+  document.title = DATA.schoolName;
+
+  // weather
+  document.getElementById('wIcon').textContent = DATA.weather.icon;
+  document.getElementById('wCity').textContent = DATA.weather.city;
+  document.getElementById('wTemp').textContent = DATA.weather.temp + '°C';
+  document.getElementById('wDesc').textContent = DATA.weather.desc;
+
+  // schedule (sol panel)
+  const dl = document.getElementById('dutyList');
+  const now = new Date();
+  const hhmm = now.getHours()*60 + now.getMinutes();
+  const schedule = DATA.schedule || DEFAULTS.schedule;
+  dl.innerHTML = schedule.map((s,i) => {
+    const [sh,sm] = s.start.split(':').map(Number);
+    const [eh,em] = s.end.split(':').map(Number);
+    const startMin = sh*60+sm, endMin = eh*60+em;
+    const active = hhmm>=startMin && hhmm<endMin ? ' active-row' : '';
+    const isBreak = s.type === 'break';
+    const label = isBreak
+      ? (s.num.includes('Öğle') ? '🍽 Öğle Arası' : s.num.includes('Uzun') ? '☕ Uzun Teneffüs' : '☕ Teneffüs')
+      : '📖 Ders';
+    return `<div class="lesson-item ${s.type}${active}" style="animation-delay:${i*.03}s">
+      <div class="lesson-dot"></div>
+      <div class="lesson-time">
+        <span class="lt-start">${s.start}</span>
+        <span class="lt-end">${s.end}</span>
+      </div>
+      <div class="lesson-body">
+        <div class="lesson-label">${label}</div>
+        <div class="lesson-num">${s.num}</div>
+      </div>
+    </div>`;
+  }).join('');
+
+  // teachers (sağ panel alt)
+  buildTeachers();
+
+  // slides
+  const ss = document.getElementById('slideshow');
+  ss.innerHTML = DATA.slides.map((s,i) => {
+    const inner = s.type === 'hero'
+      ? `<div class="slide-inner">
+           <div class="s-big-icon">${s.icon}</div>
+           <div class="s-title">${s.title}</div>
+         </div>`
+      : `<div class="slide-inner">
+           <div class="ac">
+             <div class="ac-tag ${s.tagClass}">${s.tag}</div>
+             <div class="ac-title">${s.title}</div>
+             <div class="ac-body">${s.body}</div>
+             <div class="ac-meta">${s.meta}</div>
+           </div>
+         </div>`;
+    return `<div class="slide ${s.bg}${i===0?' active':''}" data-idx="${i}">
+      ${inner}
+      <div class="slide-edit-btn" data-edit="slide-${i}">✏ Slaytı Düzenle</div>
+    </div>`;
+  }).join('') +
+  `<div class="slide-dots" id="slideDots">${DATA.slides.map((_,i)=>`<div class="dot${i===0?' active':''}" onclick="goSlide(${i})"></div>`).join('')}</div>
+   <div class="slide-prog" id="slideProgBar"></div>`;
+
+  // announcements
+  buildAnnouncements();
+
+  // ticker
+  buildTicker();
+
+  // re-attach events
+  attachEditable();
+  initSlideshow();
+  updateCenterSession();
+}
+
+function buildAnnouncements() {
+  const items = DATA.announcements;
+  const scroll = document.getElementById('apScroll');
+  const html = items.map((a,i) => `
+    <div class="ap-item ${a.type}" data-edit="ann-${i}">
+      <div class="ap-type">${a.typeLabel}</div>
+      <div class="ap-text">${a.text}</div>
+      <div class="ap-date">${a.date}</div>
+    </div>
+  `).join('');
+  scroll.innerHTML = html + html; // duplicate for loop
+  setTimeout(() => scroll.classList.add('animating'), 100);
+}
+
+function buildTeachers() {
+  const el = document.getElementById('dutyNames');
+  if (!el) return;
+  const teachers = DATA.teachers && DATA.teachers.length ? DATA.teachers : DEFAULTS.teachers;
+  const icons = ['👨‍🏫','👩‍🏫','🧑‍🏫'];
+  el.innerHTML = teachers.map((t, i) => {
+    const name  = typeof t === 'object' ? t.name  : t;
+    const floor = typeof t === 'object' ? t.floor : '';
+    return `<tr style="animation-delay:${i*.04}s">
+      <td><span class="dt-num">${i+1}</span></td>
+      <td><div class="dt-name"><span class="dt-icon">${icons[i%3]}</span><span class="dt-name-text">${name}</span></div></td>
+      <td>${floor ? `<span class="dt-floor">${floor}</span>` : '<span class="dt-floor-empty">—</span>'}</td>
+    </tr>`;
+  }).join('');
+}
+
+function buildTicker() {
+  const track = document.getElementById('tickerTrack');
+  const items = DATA.ticker;
+  const sep = '<span class="t-sep">◆</span>';
+  track.innerHTML = (items.map(t=>`<span class="t-item">${t}</span>`).join(sep)+sep).repeat(2);
+}
+
+/* ══════════════════════════════════════════════════
+   SLIDESHOW
+══════════════════════════════════════════════════ */
+const SLIDE_DUR = 7000;
+let curSlide = 0, slideTimer = null, progTimer = null;
+
+function initSlideshow() {
+  curSlide = 0;
+  startSlideProg();
+  clearInterval(slideTimer);
+  slideTimer = setInterval(() => goSlide(curSlide + 1), SLIDE_DUR);
+}
+
+function goSlide(n) {
+  const slides = document.querySelectorAll('.slide');
+  const dots   = document.querySelectorAll('.dot');
+  if (!slides.length) return;
+  slides[curSlide].classList.remove('active');
+  if (dots[curSlide]) dots[curSlide].classList.remove('active');
+  curSlide = ((n % slides.length) + slides.length) % slides.length;
+  slides[curSlide].classList.add('active');
+  if (dots[curSlide]) dots[curSlide].classList.add('active');
+  startSlideProg();
+}
+
+function startSlideProg() {
+  const bar = document.getElementById('slideProgBar');
+  if (!bar) return;
+  bar.style.transition = 'none';
+  bar.style.width = '0%';
+  requestAnimationFrame(() => {
+    requestAnimationFrame(() => {
+      bar.style.transition = `width ${SLIDE_DUR/1000}s linear`;
+      bar.style.width = '100%';
+    });
+  });
+}
+
+/* ══════════════════════════════════════════════════
+   CLOCK
+══════════════════════════════════════════════════ */
+const TR_DAYS   = ['Paz','Pzt','Sal','Çar','Per','Cum','Cmt'];
+const TR_MONTHS = ['Oca','Şub','Mar','Nis','May','Haz','Tem','Ağu','Eyl','Eki','Kas','Ara'];
+function updateClock() {
+  const n = new Date();
+  document.getElementById('clock').textContent =
+    String(n.getHours()).padStart(2,'0')+':'+String(n.getMinutes()).padStart(2,'0');
+  document.getElementById('dateDisplay').textContent =
+    `${TR_DAYS[n.getDay()]}, ${n.getDate()} ${TR_MONTHS[n.getMonth()]} ${n.getFullYear()}`;
+}
+updateClock();
+setInterval(() => { updateClock(); buildScheduleActive(); updateCenterSession(); }, 1000);
+
+function buildScheduleActive() {
+  const now = new Date();
+  const hhmm = now.getHours()*60 + now.getMinutes();
+  const schedule = DATA.schedule || DEFAULTS.schedule;
+  const rows = document.querySelectorAll('#dutyList .lesson-item');
+  rows.forEach((row, i) => {
+    if (i >= schedule.length) return;
+    const s = schedule[i];
+    const [sh,sm] = s.start.split(':').map(Number);
+    const [eh,em] = s.end.split(':').map(Number);
+    const active = hhmm >= sh*60+sm && hhmm < eh*60+em;
+    row.classList.toggle('active-row', active);
+    if (s.type === 'lesson') row.querySelector('.lesson-label').textContent = active ? '▶ Ders Sürüyor' : '📖 Ders';
+  });
+}
+
+/* ── Merkez Oturum Bilgisi ── */
+function updateCenterSession() {
+  const now = new Date();
+  const hhmm = now.getHours()*60 + now.getMinutes();
+  const totalSec = now.getHours()*3600 + now.getMinutes()*60 + now.getSeconds();
+  const schedule = DATA.schedule || DEFAULTS.schedule;
+
+  // ccbClock'u saniyeli güncelle
+  const cc = document.getElementById('ccbClock');
+  if (cc) cc.textContent =
+    String(now.getHours()).padStart(2,'0')+':'+String(now.getMinutes()).padStart(2,'0');
+
+  const label   = document.getElementById('ccbLabel');
+  const times   = document.getElementById('ccbTimes');
+  const bar     = document.getElementById('ccbBar');
+  const remain  = document.getElementById('ccbRemain');
+  if (!label || !times || !bar || !remain) return;
+
+  let found = null;
+  for (const s of schedule) {
+    const [sh,sm] = s.start.split(':').map(Number);
+    const [eh,em] = s.end.split(':').map(Number);
+    if (hhmm >= sh*60+sm && hhmm < eh*60+em) { found = s; break; }
+  }
+
+  if (!found) {
+    // Ders saatleri dışı — sonraki oturumu bul
+    let next = null;
+    for (const s of schedule) {
+      const [sh,sm] = s.start.split(':').map(Number);
+      if (sh*60+sm > hhmm) { next = s; break; }
+    }
+    label.className = 'ccb-sess-label type-none';
+    label.textContent = next ? '— Sonraki Oturum —' : '— Ders Saatleri Dışı —';
+    times.textContent  = next ? `${next.start} – ${next.end}` : '';
+    bar.style.width    = '0%';
+    bar.className      = 'ccb-progress-bar';
+    remain.textContent = next
+      ? (() => { const [sh,sm]=next.start.split(':').map(Number); const diff=(sh*60+sm)-hhmm; return diff+'dk sonra başlıyor'; })()
+      : '';
+    return;
+  }
+
+  const [sh,sm] = found.start.split(':').map(Number);
+  const [eh,em] = found.end.split(':').map(Number);
+  const startSec = sh*3600+sm*60;
+  const endSec   = eh*3600+em*60;
+  const durSec   = endSec - startSec;
+  const passedSec = totalSec - startSec;
+  const pct = Math.min(100, Math.max(0, (passedSec / durSec)*100));
+  const leftSec = Math.max(0, endSec - totalSec);
+  const leftMin = Math.floor(leftSec/60);
+  const leftS   = leftSec%60;
+
+  const isLesson = found.type === 'lesson';
+  const isLunch  = found.num && found.num.includes('Öğle');
+  const typeKey  = isLunch ? 'lunch' : isLesson ? 'lesson' : 'break';
+
+  const icons = { lesson:'📖', break:'☕', lunch:'🍽' };
+  const names = { lesson:'DERS DEVAM EDİYOR', break:'TENEFFÜS', lunch:'ÖĞLE ARASI' };
+
+  label.className   = `ccb-sess-label type-${typeKey}`;
+  label.textContent = `${icons[typeKey]} ${found.num}`;
+  times.textContent = `${found.start} – ${found.end}`;
+  bar.className     = `ccb-progress-bar type-${typeKey}`;
+  bar.style.width   = pct.toFixed(1) + '%';
+  remain.textContent= leftMin > 0
+    ? `${leftMin} dakika ${leftS} saniye kaldı`
+    : leftS > 0 ? `${leftS} saniye kaldı` : 'Bitiyor…';
+}
+
+/* ══════════════════════════════════════════════════
+   EDIT MODAL SYSTEM
+══════════════════════════════════════════════════ */
+const modal   = document.getElementById('editModal');
+const flds    = document.getElementById('editFields');
+const mTitle  = document.getElementById('editModalTitle');
+let   onSaveFn = null;
+
+function openModal(title, fields, onSave) {
+  mTitle.textContent = title;
+  flds.innerHTML = fields.map(f => `
+    <div class="edit-field">
+      <label>${f.label}</label>
+      ${f.type === 'textarea'
+        ? `<textarea id="ef_${f.key}" rows="3">${f.value||''}</textarea>`
+        : f.type === 'select'
+        ? `<select id="ef_${f.key}">${f.options.map(o=>`<option value="${o.v}"${o.v===f.value?'selected':''}>${o.l}</option>`).join('')}</select>`
+        : `<input type="${f.type||'text'}" id="ef_${f.key}" value="${f.value||''}">`
+      }
+    </div>
+  `).join('');
+  onSaveFn = onSave;
+  modal.classList.add('open');
+  const first = flds.querySelector('input,textarea,select');
+  if (first) setTimeout(() => first.focus(), 120);
+}
+
+function closeModal() { modal.classList.remove('open'); onSaveFn = null; }
+
+function getFieldVal(key) {
+  const el = document.getElementById('ef_' + key);
+  return el ? el.value.trim() : '';
+}
+
+document.getElementById('btnCancel').onclick = closeModal;
+document.getElementById('editBackdrop').onclick = closeModal;
+document.getElementById('btnSave').onclick = () => { if (onSaveFn) onSaveFn(); };
+document.addEventListener('keydown', e => { if (e.key === 'Escape') closeModal(); });
+
+/* ══════════════════════════════════════════════════
+   EDIT HANDLERS
+══════════════════════════════════════════════════ */
+function attachEditable() {
+  document.querySelectorAll('[data-edit], .editable[id]').forEach(el => {
+    el.onclick = null;
+  });
+
+  // header school
+  document.getElementById('hdr-school').onclick = (e) => {
+    e.stopPropagation();
+    openModal('Okul Bilgileri', [
+      { key:'name', label:'Okul / Pano Adı', value: DATA.schoolName },
+      { key:'sub',  label:'Alt Başlık',       value: DATA.schoolSub  },
+    ], () => {
+      DATA.schoolName = getFieldVal('name') || DATA.schoolName;
+      DATA.schoolSub  = getFieldVal('sub');
+      saveData(DATA); render(); closeModal();
+    });
+  };
+
+  // weather
+  document.getElementById('weather-box').onclick = (e) => {
+    e.stopPropagation();
+    openModal('Hava Durumu', [
+      { key:'city', label:'Şehir Adı (Türkçe)', value: DATA.weather.city },
+    ], async () => {
+      const city = getFieldVal('city') || DATA.weather.city;
+      closeModal();
+      try {
+        const geoRes  = await fetch(`https://nominatim.openstreetmap.org/search?q=${encodeURIComponent(city+', Türkiye')}&format=json&limit=1`,{headers:{'Accept-Language':'tr'}});
+        const geoData = await geoRes.json();
+        if (geoData.length) {
+          const { lat, lon } = geoData[0];
+          const wRes  = await fetch(`https://api.open-meteo.com/v1/forecast?latitude=${lat}&longitude=${lon}&current=temperature_2m,weathercode&timezone=Europe%2FIstanbul`);
+          const wData = await wRes.json();
+          const temp  = Math.round(wData.current.temperature_2m);
+          const code  = wData.current.weathercode;
+          const [desc,icon] = WMO_MAP[code]||['Bilinmiyor','🌡'];
+          DATA.weather = { city:city.toUpperCase(), temp:String(temp), icon, desc, _lat:lat, _lon:lon };
+        } else { DATA.weather.city = city.toUpperCase(); }
+      } catch(e) { DATA.weather.city = city.toUpperCase(); }
+      saveData(DATA); render();
+    });
+  };
+
+  // (sol panel artık statik schedule — edit yok)
+
+  // slide edit
+  document.querySelectorAll('[data-edit^="slide-"]').forEach(el => {
+    el.onclick = (e) => {
+      e.stopPropagation();
+      const i = parseInt(el.dataset.edit.split('-')[1]);
+      const s = DATA.slides[i];
+      if (s.type === 'hero') {
+        openModal('Slayt Düzenle — Karşılama', [
+          { key:'icon',  label:'İkon (emoji)', value: s.icon  },
+          { key:'title', label:'Başlık',       value: s.title },
+          { key:'sub',   label:'Alt Metin',    value: s.sub   },
+        ], () => {
+          DATA.slides[i] = { ...s,
+            icon:  getFieldVal('icon')  || s.icon,
+            title: getFieldVal('title') || s.title,
+            sub:   getFieldVal('sub'),
+          };
+          saveData(DATA); render(); closeModal();
+        });
+      } else {
+        openModal('Slayt Düzenle — Duyuru', [
+          { key:'tag',   label:'Etiket (tag)', value: s.tag   },
+          { key:'title', label:'Başlık',       value: s.title },
+          { key:'body',  label:'İçerik (HTML destekli)', type:'textarea', value: s.body  },
+          { key:'meta',  label:'Alt Bilgi',    value: s.meta  },
+        ], () => {
+          DATA.slides[i] = { ...s,
+            tag:   getFieldVal('tag')   || s.tag,
+            title: getFieldVal('title') || s.title,
+            body:  getFieldVal('body'),
+            meta:  getFieldVal('meta'),
+          };
+          saveData(DATA); render(); closeModal();
+        });
+      }
+    };
+  });
+
+  // announcement items
+  document.querySelectorAll('[data-edit^="ann-"]').forEach(el => {
+    el.onclick = (e) => {
+      e.stopPropagation();
+      // find real index (account for duplicate)
+      const i = parseInt(el.dataset.edit.split('-')[1]);
+      if (i >= DATA.announcements.length) return;
+      const a = DATA.announcements[i];
+      openModal('Duyuru Düzenle', [
+        { key:'typeLabel', label:'Kategori Etiketi (emoji + ad)', value: a.typeLabel },
+        { key:'type', label:'Renk Türü', type:'select', value: a.type,
+          options:[
+            {v:'ti',l:'Mavi — Bilgi'},
+            {v:'tw',l:'Altın — Önemli'},
+            {v:'ts',l:'Yeşil — Başarı'},
+            {v:'te',l:'Mor — Etkinlik'},
+          ]
+        },
+        { key:'text', label:'Duyuru Metni', value: a.text },
+        { key:'date', label:'Tarih',        value: a.date },
+      ], () => {
+        DATA.announcements[i] = {
+          type:      getFieldVal('type'),
+          typeLabel: getFieldVal('typeLabel') || a.typeLabel,
+          text:      getFieldVal('text')      || a.text,
+          date:      getFieldVal('date')      || a.date,
+        };
+        saveData(DATA); render(); closeModal();
+      });
+    };
+  });
+
+  // add announcement
+  document.getElementById('apAddBtn').onclick = (e) => {
+    e.stopPropagation();
+    openModal('Yeni Duyuru Ekle', [
+      { key:'typeLabel', label:'Kategori Etiketi', value: '📢 Duyuru' },
+      { key:'type', label:'Renk Türü', type:'select', value: 'ti',
+        options:[
+          {v:'ti',l:'Mavi — Bilgi'},
+          {v:'tw',l:'Altın — Önemli'},
+          {v:'ts',l:'Yeşil — Başarı'},
+          {v:'te',l:'Mor — Etkinlik'},
+        ]
+      },
+      { key:'text', label:'Duyuru Metni', value: '' },
+      { key:'date', label:'Tarih', value: new Date().toLocaleDateString('tr-TR') },
+    ], () => {
+      const text = getFieldVal('text');
+      if (!text) return;
+      DATA.announcements.unshift({
+        type:      getFieldVal('type'),
+        typeLabel: getFieldVal('typeLabel') || '📢 Duyuru',
+        text, date: getFieldVal('date'),
+      });
+      saveData(DATA); render(); closeModal();
+    });
+  };
+}
+
+/* ══════════════════════════════════════════════════
+   SETUP EKRANI
+══════════════════════════════════════════════════ */
+
+// ── Hava Durumu: Open-Meteo + Nominatim geocoding ──
+const WMO_MAP = {
+  0:['Açık','☀️'], 1:['Az Bulutlu','🌤'], 2:['Parçalı Bulutlu','⛅'], 3:['Kapalı','☁️'],
+  45:['Sisli','🌫'], 48:['Buzlu Sis','🌫'],
+  51:['Hafif Çisenti','🌦'], 53:['Çisenti','🌦'], 55:['Yoğun Çisenti','🌧'],
+  61:['Hafif Yağmur','🌧'], 63:['Yağmur','🌧'], 65:['Kuvvetli Yağmur','🌧'],
+  71:['Hafif Kar','🌨'], 73:['Kar','❄️'], 75:['Yoğun Kar','❄️'],
+  80:['Sağanak','🌦'], 81:['Kuvvetli Sağanak','🌧'], 82:['Şiddetli Sağanak','⛈'],
+  95:['Gök Gürültülü','⛈'], 96:['Dolu','⛈'], 99:['Şiddetli Dolu','⛈'],
+};
+
+let weatherFetched = null; // { city, temp, icon, desc }
+
+async function fetchWeatherPreview() {
+  const city = document.getElementById('s_wCity').value.trim();
+  if (!city) { setWeatherMsg('⚠ Şehir adı girin.', '#e57373'); return; }
+  setWeatherMsg('🔍 Şehir aranıyor…', 'var(--muted)');
+  document.getElementById('weatherPreview').style.display = 'none';
+  try {
+    // 1. Geocoding
+    const geoRes = await fetch(`https://nominatim.openstreetmap.org/search?q=${encodeURIComponent(city+', Türkiye')}&format=json&limit=1`, {headers:{'Accept-Language':'tr'}});
+    const geoData = await geoRes.json();
+    if (!geoData.length) { setWeatherMsg('⚠ Şehir bulunamadı.', '#e57373'); return; }
+    const { lat, lon, display_name } = geoData[0];
+    setWeatherMsg('⛅ Hava verisi alınıyor…', 'var(--muted)');
+    // 2. Weather
+    const wRes = await fetch(`https://api.open-meteo.com/v1/forecast?latitude=${lat}&longitude=${lon}&current=temperature_2m,weathercode&timezone=Europe%2FIstanbul`);
+    const wData = await wRes.json();
+    const temp = Math.round(wData.current.temperature_2m);
+    const code = wData.current.weathercode;
+    const [desc, icon] = WMO_MAP[code] || ['Bilinmiyor','🌡'];
+    const cityShort = city.toUpperCase();
+    weatherFetched = { city: cityShort, temp: String(temp), icon, desc };
+    // Show preview
+    document.getElementById('wpIcon').textContent = icon;
+    document.getElementById('wpTemp').textContent = temp + '°C';
+    document.getElementById('wpDesc').textContent = desc + ' · ' + display_name.split(',')[0];
+    document.getElementById('wpStatus').textContent = '✓ CANLI';
+    document.getElementById('weatherPreview').style.display = 'flex';
+    setWeatherMsg('', '');
+  } catch(err) {
+    setWeatherMsg('⚠ Veri alınamadı. İnternet bağlantısını kontrol edin.', '#e57373');
+  }
+}
+function setWeatherMsg(msg, color) {
+  const el = document.getElementById('weatherMsg');
+  el.textContent = msg; el.style.color = color;
+}
+
+// Pano çalışırken hava durumunu periyodik güncelle
+async function liveWeatherUpdate() {
+  if (!DATA.weather._lat || !DATA.weather._lon) return;
+  try {
+    const wRes = await fetch(`https://api.open-meteo.com/v1/forecast?latitude=${DATA.weather._lat}&longitude=${DATA.weather._lon}&current=temperature_2m,weathercode&timezone=Europe%2FIstanbul`);
+    const wData = await wRes.json();
+    const temp = Math.round(wData.current.temperature_2m);
+    const code = wData.current.weathercode;
+    const [desc, icon] = WMO_MAP[code] || ['Bilinmiyor','🌡'];
+    DATA.weather.temp = String(temp);
+    DATA.weather.icon = icon;
+    DATA.weather.desc = desc;
+    saveData(DATA);
+    document.getElementById('wTemp').textContent = temp + '°C';
+    document.getElementById('wIcon').textContent = icon;
+    document.getElementById('wDesc').textContent = desc;
+  } catch(e) {}
+}
+
+// ── Blok Ders Şablonları ──
+const BLOCK_PRESETS = {
+  standard:  { start:'08:00', lessonMin:40,  breakMin:10, count:8,  hasLunch:false, label:'Standart (8 ders · 40+10dk)' },
+  intensive: { start:'08:00', lessonMin:40,  breakMin:5,  count:10, hasLunch:true,  lunchAfter:5, lunchMin:30, label:'Yoğun (10 ders · 40+5dk)' },
+  block2:    { start:'08:00', lessonMin:80,  breakMin:15, count:5,  hasLunch:true,  lunchAfter:2, lunchMin:45, label:'Blok 2×40 (5 blok · 80dk)' },
+  halfday:   { start:'08:00', lessonMin:40,  breakMin:10, count:5,  hasLunch:false, label:'Yarım Gün (5 ders)' },
+  custom:    null,
+};
+let activeBlockKey = 'standard';
+
+function selectBlock(el, key) {
+  document.querySelectorAll('.block-btn').forEach(b => b.classList.remove('selected'));
+  el.classList.add('selected');
+  activeBlockKey = key;
+  const customDiv = document.getElementById('customBlockOpts');
+  if (key === 'custom') {
+    customDiv.classList.add('visible');
+    document.getElementById('blockActiveLabel').textContent = 'Özel ayarlar';
+  } else {
+    customDiv.classList.remove('visible');
+    const p = BLOCK_PRESETS[key];
+    document.getElementById('blockActiveLabel').textContent = p.label;
+    // Fill hidden inputs so generateSchedule can read them
+    document.getElementById('sch_start').value      = p.start;
+    document.getElementById('sch_lessonMin').value  = p.lessonMin;
+    document.getElementById('sch_breakMin').value   = p.breakMin;
+    document.getElementById('sch_count').value      = p.count;
+    document.getElementById('sch_hasLunch').checked = p.hasLunch || false;
+    if (p.hasLunch) {
+      document.getElementById('sch_lunchAfter').value = p.lunchAfter || 5;
+      document.getElementById('sch_lunchMin').value   = p.lunchMin   || 30;
+    }
+  }
+  applyBlockAndGenerate();
+}
+
+function applyBlockAndGenerate() {
+  generateSchedule();
+}
+
+// Akıllı Program Oluşturucu
+let setupSchedule = [];
+
+function toMinutes(hhmm) {
+  const [h,m] = hhmm.split(':').map(Number); return h*60+m;
+}
+function toHHMM(mins) {
+  const h = Math.floor(mins/60), m = mins%60;
+  return String(h).padStart(2,'0') + ':' + String(m).padStart(2,'0');
+}
+
+function generateSchedule() {
+  const startEl     = document.getElementById('sch_start');
+  const lessonEl    = document.getElementById('sch_lessonMin');
+  const breakEl     = document.getElementById('sch_breakMin');
+  const countEl     = document.getElementById('sch_count');
+  const hasLunchEl  = document.getElementById('sch_hasLunch');
+  const lunchAftEl  = document.getElementById('sch_lunchAfter');
+  const lunchMinEl  = document.getElementById('sch_lunchMin');
+
+  const startMin   = toMinutes((startEl && startEl.value) || '08:00');
+  const lessonMin  = parseInt((lessonEl && lessonEl.value) || 40);
+  const breakMin   = parseInt((breakEl  && breakEl.value)  || 10);
+  const count      = parseInt((countEl  && countEl.value)  || 8);
+  const hasLunch   = hasLunchEl ? hasLunchEl.checked : false;
+  const lunchAfter = parseInt((lunchAftEl && lunchAftEl.value) || 5);
+  const lunchMin   = parseInt((lunchMinEl && lunchMinEl.value) || 30);
+
+  setupSchedule = [];
+  let cur = startMin;
+
+  for (let i = 1; i <= count; i++) {
+    const lessonLabel = lessonMin >= 70
+      ? `Blok ${i}. Ders`
+      : `${i}. Ders`;
+    setupSchedule.push({ type:'lesson', num: lessonLabel, start: toHHMM(cur), end: toHHMM(cur + lessonMin) });
+    cur += lessonMin;
+    if (i < count) {
+      if (hasLunch && i === lunchAfter) {
+        setupSchedule.push({ type:'break', num:'Öğle Arası', start: toHHMM(cur), end: toHHMM(cur + lunchMin) });
+        cur += lunchMin;
+      } else {
+        const isLong = breakMin >= 15;
+        setupSchedule.push({ type:'break', num: isLong ? 'Uzun Teneffüs' : 'Teneffüs', start: toHHMM(cur), end: toHHMM(cur + breakMin) });
+        cur += breakMin;
+      }
+    }
+  }
+
+  // Önizleme tablosu
+  const preview = document.getElementById('schPreview');
+  if (!preview) return;
+  preview.innerHTML = `<table class="sch-table" style="margin-top:4px;">
+    <thead><tr><th>Tür</th><th>Ad</th><th>Başlangıç</th><th>Bitiş</th></tr></thead>
+    <tbody>${setupSchedule.map((r,idx)=>`
+      <tr class="${r.type==='break'?'row-break':''}">
+        <td><input value="${r.type==='lesson'?'📖 Ders':'☕ Teneffüs'}" readonly style="color:${r.type==='lesson'?'#6ab0ff':'var(--gold)'};width:88px;cursor:default;font-size:11px;padding:3px 5px;"></td>
+        <td><input value="${r.num}" oninput="setupSchedule[${idx}].num=this.value" style="font-size:11px;padding:3px 5px;"></td>
+        <td><input type="time" value="${r.start}" oninput="setupSchedule[${idx}].start=this.value" style="font-size:11px;padding:3px 5px;width:80px;"></td>
+        <td><input type="time" value="${r.end}" oninput="setupSchedule[${idx}].end=this.value" style="font-size:11px;padding:3px 5px;width:80px;"></td>
+      </tr>`).join('')}
+    </tbody>
+  </table><div style="margin-top:6px;font-size:10px;color:#4caf50;">✓ ${setupSchedule.length} satır oluşturuldu — saatleri dilediğiniz gibi düzenleyebilirsiniz</div>`;
+}
+
+// Öğle arası checkbox toggle
+const _lunchChk = document.getElementById('sch_hasLunch');
+if (_lunchChk) _lunchChk.addEventListener('change', function() {
+  const lo = document.getElementById('lunchOpts');
+  if (lo) lo.style.display = this.checked ? 'flex' : 'none';
+});
+
+// ── Öğretmen Tablosu ──
+let setupTeachers = JSON.parse(JSON.stringify(DEFAULTS.teachers));
+
+function renderTeacherTable() {
+  const tbody = document.getElementById('teacherTbody');
+  if (!tbody) return;
+  tbody.innerHTML = '';
+  setupTeachers.forEach((t, i) => {
+    const tr = document.createElement('tr');
+    tr.innerHTML = `
+      <td style="text-align:center;font-family:'Nunito',sans-serif;font-size:12px;color:var(--muted);padding:3px 5px;">${i+1}</td>
+      <td><input type="text" placeholder="Ad Soyad" value="${t.name||''}" oninput="setupTeachers[${i}].name=this.value"></td>
+      <td><input type="text" class="floor-input" placeholder="1. Kat" value="${t.floor||''}" oninput="setupTeachers[${i}].floor=this.value"></td>
+      <td><button class="del-row" onclick="removeTeacherRow(${i})" title="Sil">✕</button></td>
+    `;
+    tbody.appendChild(tr);
+  });
+}
+
+function addTeacherRow() {
+  setupTeachers.push({ name:'', floor:'' });
+  renderTeacherTable();
+  // Son satırın adına odaklan
+  const inputs = document.querySelectorAll('#teacherTbody input[type=text]');
+  if (inputs.length) inputs[inputs.length - 2].focus();
+}
+
+function removeTeacherRow(i) {
+  setupTeachers.splice(i, 1);
+  renderTeacherTable();
+}
+
+// ── Populate defaults ──
+function populateSetup(src) {
+  const d = src || DEFAULTS;
+  document.getElementById('s_schoolName').value = d.schoolName || DEFAULTS.schoolName;
+  document.getElementById('s_schoolSub').value  = d.schoolSub  || DEFAULTS.schoolSub;
+  document.getElementById('s_wCity').value       = (d.weather && d.weather.city) ? d.weather.city.replace(/İSTANBUL/i,'İstanbul') : 'İstanbul';
+  document.getElementById('s_announcements').value = (d.announcements||DEFAULTS.announcements).map(a=>a.text).join('\n');
+  // Öğretmenler — eski string formatı destekle
+  if (d.teachers && d.teachers.length) {
+    setupTeachers = d.teachers.map(t => typeof t === 'object' ? { name: t.name||'', floor: t.floor||'' } : { name: t, floor: '' });
+  } else {
+    setupTeachers = JSON.parse(JSON.stringify(DEFAULTS.teachers));
+  }
+  renderTeacherTable();
+  // Varsayılan blok şablonu uygula
+  const defaultBtn = document.querySelector('.block-btn[data-block="standard"]');
+  if (defaultBtn) selectBlock(defaultBtn, 'standard');
+  else generateSchedule();
+}
+
+// ── Start board ──
+async function startBoard() {
+  const btn = document.querySelector('.btn-start');
+  btn.textContent = '⏳ Hazırlanıyor…'; btn.disabled = true;
+
+  // Okul
+  DATA.schoolName = document.getElementById('s_schoolName').value.trim() || DEFAULTS.schoolName;
+  DATA.schoolSub  = document.getElementById('s_schoolSub').value.trim()  || DEFAULTS.schoolSub;
+
+  // Hava — geocoding ile lat/lon kaydet
+  const city = document.getElementById('s_wCity').value.trim() || 'İstanbul';
+  if (weatherFetched) {
+    DATA.weather = { ...weatherFetched };
+  } else {
+    // Otomatik çek
+    try {
+      const geoRes  = await fetch(`https://nominatim.openstreetmap.org/search?q=${encodeURIComponent(city+', Türkiye')}&format=json&limit=1`,{headers:{'Accept-Language':'tr'}});
+      const geoData = await geoRes.json();
+      if (geoData.length) {
+        const { lat, lon } = geoData[0];
+        const wRes  = await fetch(`https://api.open-meteo.com/v1/forecast?latitude=${lat}&longitude=${lon}&current=temperature_2m,weathercode&timezone=Europe%2FIstanbul`);
+        const wData = await wRes.json();
+        const temp  = Math.round(wData.current.temperature_2m);
+        const code  = wData.current.weathercode;
+        const [desc,icon] = WMO_MAP[code]||['Bilinmiyor','🌡'];
+        DATA.weather = { city:city.toUpperCase(), temp:String(temp), icon, desc, _lat:lat, _lon:lon };
+      }
+    } catch(e) {
+      DATA.weather = { city:city.toUpperCase(), temp:'--', icon:'🌡', desc:'Veri alınamadı' };
+    }
+  }
+
+  // lat/lon sakla (önizlemede fetchlendiyse)
+  if (!DATA.weather._lat) {
+    try {
+      const gR = await fetch(`https://nominatim.openstreetmap.org/search?q=${encodeURIComponent(city+', Türkiye')}&format=json&limit=1`,{headers:{'Accept-Language':'tr'}});
+      const gD = await gR.json();
+      if (gD.length) { DATA.weather._lat = gD[0].lat; DATA.weather._lon = gD[0].lon; }
+    } catch(e) {}
+  }
+
+  // Öğretmenler — tablodan oku, boş satırları at
+  DATA.teachers = setupTeachers.filter(t => t.name.trim()).map(t => ({ name: t.name.trim(), floor: t.floor.trim() }));
+  if (!DATA.teachers.length) DATA.teachers = DEFAULTS.teachers;
+
+  // Program — oluşturulmamışsa otomatik oluştur
+  if (!setupSchedule.length) generateSchedule();
+  DATA.schedule = setupSchedule;
+
+  // Duyurular
+  const annLines = document.getElementById('s_announcements').value.split('\n').map(l=>l.trim()).filter(Boolean);
+  if (annLines.length) {
+    DATA.announcements = annLines.map(text => ({ type:'ti', typeLabel:'📢 Duyuru', text, date:new Date().toLocaleDateString('tr-TR') }));
+  }
+
+  saveData(DATA);
+  document.getElementById('setupScreen').classList.add('hidden');
+  document.getElementById('boardWrap').classList.add('visible');
+  render();
+  setInterval(() => goSlide(curSlide+1), SLIDE_DUR);
+  // Her 15 dakikada hava durumunu güncelle
+  setInterval(liveWeatherUpdate, 15*60*1000);
+}
+
+/* ══════════════════════════════════════════════════
+   VERİ İNDİR / YÜKLE
+   ─────────────────────────────────────────────────
+   ⬇ İndir : Mevcut DATA'yı data.js olarak indirir.
+   ⬆ Yükle : Seçilen data.js dosyasını okur,
+             verileri uygular ve panoyu yeniler.
+══════════════════════════════════════════════════ */
+
+/* ── Toast yardımcısı ── */
+let _toastTimer = null;
+function showToast(msg, type = 'ok') {
+  const el = document.getElementById('panoToast');
+  if (!el) return;
+  el.textContent = msg;
+  el.className = 'pano-toast show ' + type;
+  clearTimeout(_toastTimer);
+  _toastTimer = setTimeout(() => { el.className = 'pano-toast'; }, 3200);
+}
+
+/* ── ⬇ Veriyi data.js olarak indir ── */
+function exportDataJs() {
+  const d = DATA;
+  const json = s => JSON.stringify(s, null, 2);
+  // teachers her zaman obje formatında
+  const teachers = (d.teachers||[]).map(t =>
+    typeof t === 'object' ? t : { name: t, floor: '' }
+  );
+
+  const content = `/**
+ * MuGöl Dijital Pano — Veri Dosyası
+ * Oluşturulma: ${new Date().toLocaleString('tr-TR')}
+ * ─────────────────────────────────────────
+ * Bu dosyayı düzenleyip "⬆ Yükle" butonu ile
+ * tekrar panoya yükleyebilirsiniz.
+ */
+
+window.PANO_DATA = {
+
+  schoolName: ${JSON.stringify(d.schoolName)},
+  schoolSub:  ${JSON.stringify(d.schoolSub)},
+
+  teachers: ${json(teachers)},
+
+  schedule: ${json(d.schedule)},
+
+  announcements: ${json(d.announcements)},
+
+  slides: ${json(d.slides)},
+
+  ticker: ${json(d.ticker)},
+
+};
+`;
+
+  const blob = new Blob([content], { type: 'text/javascript' });
+  const url  = URL.createObjectURL(blob);
+  const a    = document.createElement('a');
+  a.href     = url;
+  a.download = 'data.js';
+  document.body.appendChild(a);
+  a.click();
+  document.body.removeChild(a);
+  URL.revokeObjectURL(url);
+  showToast('✓ data.js indirildi', 'ok');
+}
+
+/* ── ⬆ data.js dosyasını yükle ve uygula ── */
+function importDataJs(input) {
+  const file = input.files[0];
+  if (!file) return;
+  const reader = new FileReader();
+  reader.onload = function(e) {
+    try {
+      const text = e.target.result;
+      window.PANO_DATA = undefined;
+      eval(text);
+      const loaded = window.PANO_DATA;
+      if (!loaded || typeof loaded !== 'object') {
+        showToast('✗ Geçersiz dosya: window.PANO_DATA bulunamadı', 'err');
+        return;
+      }
+      const merged = mergeData(loaded, DATA);
+      Object.assign(DATA, merged);
+      saveData(DATA);
+      render();
+      showToast('✓ Veriler yüklendi ve pano güncellendi', 'ok');
+    } catch(err) {
+      showToast('✗ Dosya okunamadı: ' + err.message, 'err');
+    }
+    input.value = '';
+  };
+  reader.readAsText(file, 'utf-8');
+}
+
+/* ── ⬆ Setup ekranında data.js yükle (formu doldur) ── */
+function setupImportDataJs(input) {
+  const file = input.files[0];
+  if (!file) return;
+  const reader = new FileReader();
+  reader.onload = function(e) {
+    try {
+      const text = e.target.result;
+      window.PANO_DATA = undefined;
+      eval(text);
+      const loaded = window.PANO_DATA;
+      if (!loaded || typeof loaded !== 'object') {
+        showToast('✗ Geçersiz dosya: window.PANO_DATA bulunamadı', 'err');
+        return;
+      }
+      // DATA'yı güncelle
+      const merged = mergeData(loaded, DEFAULTS);
+      Object.assign(DATA, merged);
+      saveData(DATA);
+      // Setup formunu doldur
+      populateSetup(merged);
+      showToast('✓ Dosya yüklendi — alanlar dolduruldu', 'ok');
+    } catch(err) {
+      showToast('✗ Dosya okunamadı: ' + err.message, 'err');
+    }
+    input.value = '';
+  };
+  reader.readAsText(file, 'utf-8');
+}
+
+/* ══════════════════════════════════════════════════
+   DÜZENLE — Setup ekranına geri dön
+══════════════════════════════════════════════════ */
+function openSetupEdit() {
+  // Mevcut verileri forma doldur
+  populateSetup(DATA);
+  // Panoyu gizle, setup'ı aç
+  document.getElementById('boardWrap').classList.remove('visible');
+  const ss = document.getElementById('setupScreen');
+  ss.classList.remove('hidden');
+  // Geri dön butonunu göster
+  const backBtn = document.getElementById('setupBackBtn');
+  if (backBtn) backBtn.style.display = 'inline-flex';
+  // "Panoyu Başlat" butonunu "Kaydet & Kapat" olarak güncelle
+  const btn = ss.querySelector('.btn-start');
+  if (btn) {
+    btn.textContent = '💾 Kaydet & Kapat';
+    btn.title = 'Değişiklikleri kaydet ve panoyu göster';
+  }
+  // Başlık metnini güncelle
+  const subP = ss.querySelector('.setup-logo p');
+  if (subP) subP.textContent = 'Pano bilgilerini düzenleyin';
+  ss.scrollTop = 0;
+}
+
+/* ── Panoya geri dön (kaydetmeden) ── */
+function backToBoard() {
+  document.getElementById('setupScreen').classList.add('hidden');
+  document.getElementById('boardWrap').classList.add('visible');
+  // Geri dön butonunu gizle
+  const backBtn = document.getElementById('setupBackBtn');
+  if (backBtn) backBtn.style.display = 'none';
+}
+
+// ── Init ──
+const _saved = loadData();
+if (_saved) Object.assign(DATA, mergeData(_saved, DEFAULTS));
+populateSetup(DATA);
+if (_saved) {
+  document.getElementById('setupScreen').classList.add('hidden');
+  document.getElementById('boardWrap').classList.add('visible');
+  render();
+  setInterval(() => goSlide(curSlide+1), SLIDE_DUR);
+  setInterval(liveWeatherUpdate, 15*60*1000);
+  liveWeatherUpdate();
+}
+</script>
+</body>
+</html>
