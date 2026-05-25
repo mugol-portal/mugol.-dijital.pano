@@ -288,7 +288,16 @@ body::after {
 .slide-manager-item { background: #030812; border: 1px solid rgba(255,255,255,0.08); border-radius: var(--radius-sm); padding: 14px; margin-bottom: 12px; position: relative;}
 .slide-manager-hdr { display: flex; justify-content: space-between; align-items: center; margin-bottom: 10px; border-bottom: 1px solid rgba(255,255,255,0.05); padding-bottom: 8px;}
 .slide-manager-type { font-size: 11px; font-weight: 700; color: var(--gold); text-transform: uppercase; letter-spacing: 1px;}
-.slide-btn-group { display: flex; gap: 8px; margin-bottom: 14px;}
+.slide-btn-group { display: flex; gap: 8px; margin-bottom: 14px; flex-wrap: wrap;}
+.slide-upload-row { display: flex; align-items: center; gap: 10px; margin-top: 8px; flex-wrap: wrap; }
+.btn-upload-file { background: rgba(245,158,11,0.12); border: 1px dashed rgba(245,158,11,0.4); color: var(--gold); padding: 8px 16px; border-radius: var(--radius-sm); font-size: 12px; font-weight: 700; cursor: pointer; transition: 0.2s; display: inline-flex; align-items: center; gap: 6px; font-family: var(--font-main); white-space: nowrap;}
+.btn-upload-file:hover { background: rgba(245,158,11,0.22); border-color: var(--gold); }
+.slide-preview-thumb { max-width: 120px; max-height: 70px; border-radius: 6px; border: 1px solid rgba(255,255,255,0.1); object-fit: cover; display: none; }
+.slide-preview-vid { max-width: 160px; max-height: 70px; border-radius: 6px; border: 1px solid rgba(255,255,255,0.1); display: none; }
+.slide-url-or { font-size: 11px; color: var(--text-muted); font-weight: 700; white-space: nowrap; }
+.slide-order-btns { display: flex; gap: 4px; }
+.slide-order-btn { background: rgba(255,255,255,0.05); border: 1px solid rgba(255,255,255,0.1); color: #fff; width: 28px; height: 28px; border-radius: 5px; font-size: 14px; cursor: pointer; display: flex; align-items: center; justify-content: center; transition: 0.2s; }
+.slide-order-btn:hover { background: rgba(255,255,255,0.12); }
 
 .edit-modal { display: none; position: fixed; inset: 0; z-index: 100000; align-items: center; justify-content: center; }
 .edit-modal.open { display: flex; }
@@ -325,10 +334,12 @@ body::after {
   <button id="setupBackBtn" class="setup-back-btn" onclick="backToBoard()" style="display:none;">← Panoya Dön</button>
   
   <div class="setup-logo">
-    <div class="sl-logo-wrap">
-      <img src="logo.png" alt="Logo" class="sl-logo-img" onerror="this.style.display='none';document.getElementById('slLogoFallback').style.display='block';">
+    <div class="sl-logo-wrap" style="position:relative;cursor:pointer;" title="Logo yüklemek için tıklayın" onclick="document.getElementById('logoUploadInput').click()">
+      <img src="logo.png" alt="Logo" id="slLogoImg" class="sl-logo-img" onerror="this.style.display='none';document.getElementById('slLogoFallback').style.display='block';">
       <span id="slLogoFallback" class="sl-icon" style="display:none;">🏫</span>
+      <div style="position:absolute;bottom:0;right:0;width:24px;height:24px;background:var(--blue-primary);border-radius:50%;display:flex;align-items:center;justify-content:center;font-size:13px;box-shadow:0 2px 8px rgba(0,0,0,0.5);">📷</div>
     </div>
+    <input type="file" id="logoUploadInput" accept="image/*" style="display:none" onchange="loadLogoFile(this)">
     <h1>Dijital Pano</h1>
     <p>Sistemi başlatmadan önce panoda görünecek bilgileri düzenleyin</p>
   </div>
@@ -404,7 +415,7 @@ body::after {
         <button class="btn-add-row" onclick="addSetupSlide('image')" style="margin-top:0; background:rgba(16,185,129,0.1); border-color:rgba(16,185,129,0.3); color:#34D399;">+ Resim Slaytı</button>
         <button class="btn-add-row" onclick="addSetupSlide('video')" style="margin-top:0; background:rgba(139,92,246,0.1); border-color:rgba(139,92,246,0.3); color:#A78BFA;">+ Video Slaytı</button>
       </div>
-      <div class="sf-hint" style="margin-bottom: 15px;">Resim ve Videoları eklerken geçerli bir URL (link) girmelisiniz (Örn: https://site.com/resim.jpg). Videolar otomatik sessiz oynatılır.</div>
+      <div class="sf-hint" style="margin-bottom: 15px;">Resim ve Videoları bilgisayarınızdan yükleyebilir veya geçerli bir URL girebilirsiniz. Videolar otomatik olarak sessiz oynatılır. <strong style="color:var(--gold);">Not:</strong> Büyük dosyalar tarayıcıda daha uzun süre yüklenebilir.</div>
 
       <div id="setupSlideList"></div>
     </div>
@@ -598,6 +609,7 @@ const STORAGE_KEY = 'dijital_pano_v4';
 const DEFAULTS = {
   schoolName: '',
   schoolSub:  '',
+  logoData: '',
   weather: { city:'', temp:'--', icon:'⛅', desc:'Hava durumu bekleniyor...' },
   
   schedule: [
@@ -613,7 +625,21 @@ const DEFAULTS = {
 };
 
 function loadData() { try { const s = localStorage.getItem(STORAGE_KEY); return s ? JSON.parse(s) : null; } catch(e) { return null; } }
-function saveData(d) { try { localStorage.setItem(STORAGE_KEY, JSON.stringify(d)); } catch(e) {} }
+function saveData(d) { 
+  try { 
+    localStorage.setItem(STORAGE_KEY, JSON.stringify(d)); 
+  } catch(e) { 
+    // localStorage dolu olabilir (büyük medya dosyaları). Medyasız kaydet.
+    try {
+      const slim = JSON.parse(JSON.stringify(d));
+      if (slim.slides) slim.slides = slim.slides.map(s => {
+        if (s.url && s.url.startsWith('data:') && s.url.length > 500000) return { ...s, url: '', _uploadedLocally: true };
+        return s;
+      });
+      localStorage.setItem(STORAGE_KEY, JSON.stringify(slim));
+    } catch(e2) { console.warn('Kaydetme başarısız (alan yetersiz)'); }
+  } 
+}
 
 function mergeData(saved, defaults) {
   if (!saved) return JSON.parse(JSON.stringify(defaults));
@@ -633,6 +659,14 @@ function render() {
   document.getElementById('schoolName').textContent = DATA.schoolName;
   document.getElementById('schoolSub').textContent  = DATA.schoolSub;
   document.title = DATA.schoolName || 'Dijital Pano';
+
+  // Logo
+  if (DATA.logoData) {
+    const hImg = document.getElementById('hLogoImg');
+    const sImg = document.getElementById('slLogoImg');
+    if (hImg) { hImg.src = DATA.logoData; hImg.style.display = 'block'; document.getElementById('hLogoFallback').style.display = 'none'; }
+    if (sImg) { sImg.src = DATA.logoData; sImg.style.display = 'block'; document.getElementById('slLogoFallback').style.display = 'none'; }
+  }
 
   document.getElementById('wIcon').textContent = DATA.weather.icon;
   document.getElementById('wCity').textContent = DATA.weather.city;
@@ -683,12 +717,11 @@ function buildSlideshow() {
     
     if (s.type === 'image') {
       bgClass = 'bg-media';
-      inner = `<img src="${s.url}" class="slide-media" onerror="this.src='data:image/svg+xml;utf8,<svg xmlns=\\'http://www.w3.org/2000/svg\\' fill=\\'none\\' viewBox=\\'0 0 24 24\\' stroke=\\'%2394A3B8\\'><path stroke-linecap=\\'round\\' stroke-linejoin=\\'round\\' stroke-width=\\'2\\' d=\\'M4 16l4.586-4.586a2 2 0 012.828 0L16 16m-2-2l1.586-1.586a2 2 0 012.828 0L20 14m-6-6h.01M6 20h12a2 2 0 002-2V6a2 2 0 00-2-2H6a2 2 0 00-2 2v12a2 2 0 002 2z\\'/></svg>';" />`;
+      inner = `<img src="${s.url}" class="slide-media" onerror="this.style.opacity='0.3';" />`;
     } 
     else if (s.type === 'video') {
       bgClass = 'bg-media';
-      // Video autoplay, muted, loop zorunludur
-      inner = `<video src="${s.url}" class="slide-media" autoplay loop muted playsinline></video>`;
+      inner = `<video class="slide-media slide-video" muted loop playsinline preload="auto" style="background:#000;"><source src="${s.url}"></video>`;
     } 
     else {
       // Text / Card
@@ -761,16 +794,37 @@ function buildTicker() {
 const SLIDE_DUR = 8000;
 let curSlide = 0, slideTimer = null;
 
+// Tarayıcı autoplay politikası: ilk kullanıcı etkileşiminde videoları aç
+let _autoplayUnlocked = false;
+function unlockAutoplay() {
+  if (_autoplayUnlocked) return;
+  _autoplayUnlocked = true;
+  document.querySelectorAll('.slide-video').forEach(v => {
+    v.play().catch(() => {});
+  });
+}
+document.addEventListener('click', unlockAutoplay, { once: true });
+document.addEventListener('keydown', unlockAutoplay, { once: true });
+
 function initSlideshow() {
-  curSlide = 0; startSlideProg();
+  curSlide = 0;
   clearInterval(slideTimer);
   const slides = document.querySelectorAll('.slide');
-  if(slides.length > 1) {
+
+  // İlk slaytta video varsa oynat
+  const firstVid = slides[0] && slides[0].querySelector('video');
+  if (firstVid) {
+    firstVid.load();
+    firstVid.play().catch(() => {});
+  }
+
+  startSlideProg();
+
+  if (slides.length > 1) {
     slideTimer = setInterval(() => goSlide(curSlide + 1), SLIDE_DUR);
   } else {
-    // Tek slayt varsa progress barı gizle
     const p = document.getElementById('slideProgBar');
-    if(p) p.style.display = 'none';
+    if (p) p.style.display = 'none';
   }
 }
 
@@ -781,7 +835,7 @@ function goSlide(n) {
   
   // Önceki videoyu durdur
   const oldVid = slides[curSlide].querySelector('video');
-  if(oldVid) oldVid.pause();
+  if (oldVid) { oldVid.pause(); oldVid.currentTime = 0; }
 
   slides[curSlide].classList.remove('active');
   if (dots[curSlide]) dots[curSlide].classList.remove('active');
@@ -791,11 +845,13 @@ function goSlide(n) {
   slides[curSlide].classList.add('active');
   if (dots[curSlide]) dots[curSlide].classList.add('active');
   
-  // Yeni videoyu oynat
+  // Yeni videoyu yükle ve oynat
   const newVid = slides[curSlide].querySelector('video');
-  if(newVid) {
-      newVid.currentTime = 0;
-      newVid.play().catch(e => console.log("Otomatik oynatma engellendi", e));
+  if (newVid) {
+    newVid.load();
+    newVid.play().catch(() => {
+      // Autoplay engellendiyse kullanıcı etkileşimi bekleniyor; sessizce geç
+    });
   }
 
   startSlideProg();
@@ -985,6 +1041,20 @@ function attachEditable() {
   };
 }
 
+function loadLogoFile(input) {
+  const file = input.files[0]; if (!file) return;
+  if (file.size > 2 * 1024 * 1024) { showToast('✗ Logo 2MB altında olmalıdır', 'err'); return; }
+  const reader = new FileReader();
+  reader.onload = function(e) {
+    DATA.logoData = e.target.result;
+    const sImg = document.getElementById('slLogoImg');
+    if (sImg) { sImg.src = e.target.result; sImg.style.display = 'block'; document.getElementById('slLogoFallback').style.display = 'none'; }
+    showToast('✓ Logo yüklendi', 'ok');
+    saveData(DATA);
+  };
+  reader.readAsDataURL(file);
+}
+
 const WMO_MAP = {
   0:['Açık','☀️'], 1:['Az Bulutlu','🌤'], 2:['Parçalı Bulutlu','⛅'], 3:['Kapalı','☁️'],
   45:['Sisli','🌫'], 48:['Buzlu Sis','🌫'],
@@ -1136,63 +1206,127 @@ function renderTeacherTable() {
 function addTeacherRow() { setupTeachers.push({ name:'', floor:'' }); renderTeacherTable(); }
 function removeTeacherRow(i) { setupTeachers.splice(i, 1); renderTeacherTable(); }
 
-/* YENİ: Slayt Yöneticisi İşlevleri */
+/* Slayt Yöneticisi İşlevleri */
 function renderSetupSlides() {
   const list = document.getElementById('setupSlideList');
   if(!list) return;
   list.innerHTML = '';
   
   if(setupSlides.length === 0) {
-      list.innerHTML = `<div style="padding: 20px; text-align:center; color: var(--text-muted); background:rgba(255,255,255,0.02); border-radius:8px;">Eklenmiş slayt bulunmuyor. Yukarıdaki butonlarla ekleyin.</div>`;
-      return;
+    list.innerHTML = `<div style="padding: 20px; text-align:center; color: var(--text-muted); background:rgba(255,255,255,0.02); border-radius:8px;">Eklenmiş slayt bulunmuyor. Yukarıdaki butonlarla ekleyin.</div>`;
+    return;
   }
 
   setupSlides.forEach((s, i) => {
-    let innerHtml = '';
-    
-    if(s.type === 'text') {
-      innerHtml = `
-        <div class="slide-manager-hdr">
-           <span class="slide-manager-type" style="color:#60A5FA;">📝 METİN SLAYTI</span>
-           <button class="del-row" style="font-size:14px;" onclick="removeSetupSlide(${i})">Sil ✕</button>
-        </div>
-        <div class="sf"><input type="text" placeholder="Büyük Başlık (Örn: Duyuru)" value="${s.title||''}" oninput="setupSlides[${i}].title=this.value"></div>
-        <div class="sf" style="margin-bottom:0;"><textarea placeholder="İçerik Metni..." oninput="setupSlides[${i}].body=this.value">${s.body||''}</textarea></div>
-      `;
-    } 
-    else if(s.type === 'image') {
-      innerHtml = `
-        <div class="slide-manager-hdr">
-           <span class="slide-manager-type" style="color:#34D399;">🖼 RESİM SLAYTI</span>
-           <button class="del-row" style="font-size:14px;" onclick="removeSetupSlide(${i})">Sil ✕</button>
-        </div>
-        <div class="sf" style="margin-bottom:0;"><input type="text" placeholder="Resim URL (http://...)" value="${s.url||''}" oninput="setupSlides[${i}].url=this.value"></div>
-      `;
-    } 
-    else if(s.type === 'video') {
-      innerHtml = `
-        <div class="slide-manager-hdr">
-           <span class="slide-manager-type" style="color:#A78BFA;">▶ VİDEO SLAYTI</span>
-           <button class="del-row" style="font-size:14px;" onclick="removeSetupSlide(${i})">Sil ✕</button>
-        </div>
-        <div class="sf" style="margin-bottom:0;"><input type="text" placeholder="Video URL (http://... mp4)" value="${s.url||''}" oninput="setupSlides[${i}].url=this.value"></div>
-      `;
-    }
-
     const div = document.createElement('div');
     div.className = 'slide-manager-item';
-    div.innerHTML = innerHtml;
+    const orderBtns = `<div class="slide-order-btns">
+      ${i > 0 ? `<button class="slide-order-btn" title="Yukarı Taşı" onclick="moveSetupSlide(${i},-1)">↑</button>` : ''}
+      ${i < setupSlides.length-1 ? `<button class="slide-order-btn" title="Aşağı Taşı" onclick="moveSetupSlide(${i},1)">↓</button>` : ''}
+    </div>`;
+
+    if(s.type === 'text') {
+      div.innerHTML = `
+        <div class="slide-manager-hdr">
+          <span class="slide-manager-type" style="color:#60A5FA;">📝 METİN SLAYTI · #${i+1}</span>
+          <div style="display:flex;gap:8px;align-items:center;">${orderBtns}<button class="del-row" style="font-size:14px;" onclick="removeSetupSlide(${i})">Sil ✕</button></div>
+        </div>
+        <div class="sf"><input type="text" placeholder="Büyük Başlık (Örn: Duyuru)" value="${escHtml(s.title||'')}" oninput="setupSlides[${i}].title=this.value"></div>
+        <div class="sf" style="margin-bottom:0;"><textarea rows="3" placeholder="İçerik Metni..." oninput="setupSlides[${i}].body=this.value">${escHtml(s.body||'')}</textarea></div>`;
+    } 
+    else if(s.type === 'image') {
+      const hasData = s.url && s.url.startsWith('data:');
+      const hasUrl  = s.url && !hasData;
+      div.innerHTML = `
+        <div class="slide-manager-hdr">
+          <span class="slide-manager-type" style="color:#34D399;">🖼 RESİM SLAYTI · #${i+1}</span>
+          <div style="display:flex;gap:8px;align-items:center;">${orderBtns}<button class="del-row" style="font-size:14px;" onclick="removeSetupSlide(${i})">Sil ✕</button></div>
+        </div>
+        <div class="slide-upload-row">
+          <label class="btn-upload-file">📁 Dosyadan Yükle<input type="file" accept="image/*" style="display:none" onchange="loadSlideFile(${i},this,'image')"></label>
+          <span class="slide-url-or">— veya URL —</span>
+          <input type="text" placeholder="https://site.com/resim.jpg" value="${hasUrl ? escHtml(s.url) : ''}" oninput="setupSlides[${i}].url=this.value;updateSlideThumb(${i})" style="flex:1;background:#030812;border:1px solid rgba(255,255,255,0.08);border-radius:6px;color:#fff;font-family:var(--font-main);font-size:13px;padding:9px 12px;outline:none;">
+        </div>
+        <div style="margin-top:10px;">
+          <img id="sthumb_${i}" class="slide-preview-thumb" src="${s.url||''}" style="display:${s.url?'block':'none'};" alt="Önizleme">
+          ${hasData ? `<span style="font-size:11px;color:var(--green-primary);font-weight:700;">✓ Dosya yüklendi</span>` : ''}
+        </div>`;
+    } 
+    else if(s.type === 'video') {
+      const hasData = s.url && s.url.startsWith('data:');
+      const hasUrl  = s.url && !hasData;
+      div.innerHTML = `
+        <div class="slide-manager-hdr">
+          <span class="slide-manager-type" style="color:#A78BFA;">▶ VİDEO SLAYTI · #${i+1}</span>
+          <div style="display:flex;gap:8px;align-items:center;">${orderBtns}<button class="del-row" style="font-size:14px;" onclick="removeSetupSlide(${i})">Sil ✕</button></div>
+        </div>
+        <div class="slide-upload-row">
+          <label class="btn-upload-file">📁 Dosyadan Yükle<input type="file" accept="video/*" style="display:none" onchange="loadSlideFile(${i},this,'video')"></label>
+          <span class="slide-url-or">— veya URL —</span>
+          <input type="text" placeholder="https://site.com/video.mp4" value="${hasUrl ? escHtml(s.url) : ''}" oninput="setupSlides[${i}].url=this.value" style="flex:1;background:#030812;border:1px solid rgba(255,255,255,0.08);border-radius:6px;color:#fff;font-family:var(--font-main);font-size:13px;padding:9px 12px;outline:none;">
+        </div>
+        <div style="margin-top:10px;">
+          ${hasData ? `<video id="svthumb_${i}" class="slide-preview-vid" src="${s.url}" muted style="display:block;" controls></video><span style="font-size:11px;color:var(--green-primary);font-weight:700;">✓ Video yüklendi</span>` : ''}
+          ${hasUrl  ? `<video id="svthumb_${i}" class="slide-preview-vid" src="${s.url}" muted style="display:block;" controls></video>` : ''}
+        </div>`;
+    }
+
     list.appendChild(div);
   });
+}
+
+function escHtml(str) {
+  return String(str).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');
+}
+
+function loadSlideFile(idx, input, type) {
+  const file = input.files[0];
+  if (!file) return;
+  const maxMB = type === 'video' ? 50 : 10;
+  if (file.size > maxMB * 1024 * 1024) {
+    showToast(`✗ Dosya çok büyük (max ${maxMB}MB)`, 'err');
+    return;
+  }
+  showToast('⏳ Dosya yükleniyor...', 'ok');
+  const reader = new FileReader();
+  reader.onload = function(e) {
+    setupSlides[idx].url = e.target.result;
+    showToast('✓ Dosya yüklendi', 'ok');
+    renderSetupSlides();
+  };
+  reader.onerror = function() { showToast('✗ Dosya okunamadı', 'err'); };
+  reader.readAsDataURL(file);
+}
+
+function updateSlideThumb(idx) {
+  const img = document.getElementById('sthumb_' + idx);
+  if (img) {
+    const url = setupSlides[idx].url;
+    img.src = url;
+    img.style.display = url ? 'block' : 'none';
+  }
+}
+
+function moveSetupSlide(idx, dir) {
+  const target = idx + dir;
+  if (target < 0 || target >= setupSlides.length) return;
+  [setupSlides[idx], setupSlides[target]] = [setupSlides[target], setupSlides[idx]];
+  renderSetupSlides();
 }
 
 function addSetupSlide(type) {
   if(type === 'text') setupSlides.push({ type: 'text', title: '', body: '' });
   else setupSlides.push({ type: type, url: '' });
   renderSetupSlides();
+  // Scroll to bottom of slide list
+  setTimeout(() => {
+    const list = document.getElementById('setupSlideList');
+    if (list) list.lastElementChild && list.lastElementChild.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
+  }, 100);
 }
 
 function removeSetupSlide(index) {
+  if (!confirm('Bu slaytı silmek istediğinizden emin misiniz?')) return;
   setupSlides.splice(index, 1);
   renderSetupSlides();
 }
@@ -1278,6 +1412,11 @@ function showToast(msg, type = 'ok') {
 function exportDataJs() {
   const d = DATA; const json = s => JSON.stringify(s, null, 2);
   const teachers = (d.teachers||[]).map(t => typeof t === 'object' ? t : { name: t, floor: '' });
+  // Büyük base64 verileri uyar
+  const bigSlides = (d.slides||[]).filter(s => s.url && s.url.startsWith('data:') && s.url.length > 500000);
+  if (bigSlides.length) {
+    if (!confirm(`Dikkat: ${bigSlides.length} adet yerelden yüklü büyük medya dosyası var.\nBunlar data.js dosyasına dahil edilecek ve dosya büyük olabilir.\nDevam etmek istiyor musunuz?`)) return;
+  }
   const content = `window.PANO_DATA = {
   schoolName: ${JSON.stringify(d.schoolName)}, schoolSub: ${JSON.stringify(d.schoolSub)},
   teachers: ${json(teachers)}, schedule: ${json(d.schedule)}, announcements: ${json(d.announcements)},
