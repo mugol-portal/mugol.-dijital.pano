@@ -336,12 +336,12 @@ body::after {
   <div class="setup-logo">
     <div class="sl-logo-wrap" style="position:relative;cursor:pointer;" title="Logo yüklemek için tıklayın" onclick="document.getElementById('logoUploadInput').click()">
       <img src="logo.png" alt="Logo" id="slLogoImg" class="sl-logo-img" onerror="this.style.display='none';document.getElementById('slLogoFallback').style.display='block';">
-      <span id="slLogoFallback" class="sl-icon" style="display:none;">🏫</span>
+      <span id="slLogoFallback" class="sl-icon" style="display:none;">📋</span>
       <div style="position:absolute;bottom:0;right:0;width:24px;height:24px;background:var(--blue-primary);border-radius:50%;display:flex;align-items:center;justify-content:center;font-size:13px;box-shadow:0 2px 8px rgba(0,0,0,0.5);">📷</div>
     </div>
     <input type="file" id="logoUploadInput" accept="image/*" style="display:none" onchange="loadLogoFile(this)">
     <h1>Dijital Pano</h1>
-    <p>Sistemi başlatmadan önce panoda görünecek bilgileri düzenleyin</p>
+    <p>Panoya başlamadan önce kurum ve içerik bilgilerini ayarlayın.</p>
   </div>
 
   <div class="setup-data-bar">
@@ -353,22 +353,36 @@ body::after {
 
   <div class="setup-grid">
     <div class="setup-card">
-      <div class="sc-title"><span>🏫</span> Okul Bilgileri</div>
+      <div class="sc-title"><span>🏢</span> Kurum / Mekan Bilgileri</div>
       <div class="sf">
-        <label>Okul / Pano Adı</label>
-        <input type="text" id="s_schoolName" placeholder="Okul veya pano adını girin">
+        <label>Kurum / Pano Adı</label>
+        <input type="text" id="s_schoolName" placeholder="Örn: Belediye, Otel, Fabrika, Okul...">
       </div>
       <div class="sf">
         <label>Alt Başlık</label>
-        <input type="text" id="s_schoolSub" placeholder="Alt başlık (örn: Dijital Bilgi Panosu)">
+        <input type="text" id="s_schoolSub" placeholder="Örn: Dijital Bilgi Panosu, Lobi Ekranı...">
+      </div>
+      <div class="sf">
+        <label>Sol Panel Başlığı</label>
+        <input type="text" id="s_scheduleTitle" placeholder="Örn: Program, Vardiya, Ders Saatleri...">
+        <div class="sf-hint">Sol taraftaki zaman çizelgesinin üstündeki başlık.</div>
+      </div>
+      <div class="sf">
+        <label>Ana Dilim Adı</label>
+        <input type="text" id="s_slotLabel" placeholder="Örn: Ders, Vardiya, Seans, Toplantı">
+        <div class="sf-hint">Zaman dilimlerindeki ana bloğun adı (Ders, Vardiya...).</div>
+      </div>
+      <div class="sf">
+        <label>Ara Dilim Adı</label>
+        <input type="text" id="s_breakLabel" placeholder="Örn: Teneffüs, Mola, Ara, Dinlenme">
       </div>
     </div>
 
     <div class="setup-card">
       <div class="sc-title"><span>🌤</span> Hava Durumu</div>
       <div class="sf">
-        <label>Şehir Adı (Türkçe)</label>
-        <input type="text" id="s_wCity" placeholder="Şehir adını girin (örn: İstanbul)">
+        <label>Şehir / Konum Adı</label>
+        <input type="text" id="s_wCity" placeholder="Şehir adını girin (örn: İstanbul, London, Dubai...)">
       </div>
       <div class="sf">
         <div id="weatherPreview" style="display:none;background:rgba(255,255,255,.05);border-radius:8px;padding:15px;display:flex;align-items:center;gap:15px;">
@@ -387,22 +401,32 @@ body::after {
     </div>
 
     <div class="setup-card full">
-      <div class="sc-title"><span>👨‍🏫</span> Nöbetçi Öğretmenler</div>
+      <div class="sc-title"><span>👤</span> Görevli Personel</div>
+      <div style="display:grid;grid-template-columns:1fr 1fr;gap:16px;margin-bottom:14px;">
+        <div class="sf" style="margin:0">
+          <label>Personel Ticker Başlığı</label>
+          <input type="text" id="s_dutyTickerTitle" placeholder="Örn: GÖREVLİ PERSONEL, NÖBETÇİ...">
+        </div>
+        <div class="sf" style="margin:0">
+          <label>Personel Sütun Adı</label>
+          <input type="text" id="s_staffColLabel" placeholder="Örn: Ad Soyad, Görevli, Yetkili...">
+        </div>
+      </div>
       <div class="sf">
         <div style="overflow-x:auto;">
           <table class="teacher-table" id="teacherTable">
             <thead>
               <tr>
                 <th style="width:40px;">#</th>
-                <th>Ad Soyad</th>
-                <th style="width:180px;">Kat / Konum</th>
+                <th id="thStaffName">Ad Soyad / İsim</th>
+                <th style="width:180px;">Kat / Konum / Birim</th>
                 <th style="width:50px;"></th>
               </tr>
             </thead>
             <tbody id="teacherTbody"></tbody>
           </table>
         </div>
-        <button class="btn-add-row" onclick="addTeacherRow()" style="margin-top: 10px;">+ Öğretmen Ekle</button>
+        <button class="btn-add-row" onclick="addTeacherRow()" style="margin-top: 10px;">+ Personel Ekle</button>
       </div>
     </div>
 
@@ -421,19 +445,19 @@ body::after {
     </div>
 
     <div class="setup-card full">
-      <div class="sc-title"><span>🕐</span> Ders &amp; Teneffüs Saatleri</div>
+      <div class="sc-title"><span>🕐</span> Program / Zaman Çizelgesi</div>
       <div style="margin-bottom:15px;">
         <div style="font-size:12px;color:var(--text-muted);letter-spacing:1px;text-transform:uppercase;margin-bottom:10px;font-weight:800;">Hızlı Şablon Seç</div>
         <div class="block-selector">
           <div class="block-btn selected" onclick="selectBlock(this,'standard')" data-block="standard">
             <span class="bb-icon">📚</span>
             <span class="bb-label">Standart</span>
-            <span class="bb-sub">8 ders · 40+10dk</span>
+            <span class="bb-sub">8 dilim · 40+10dk</span>
           </div>
           <div class="block-btn" onclick="selectBlock(this,'intensive')" data-block="intensive">
             <span class="bb-icon">⚡</span>
             <span class="bb-label">Yoğun</span>
-            <span class="bb-sub">10 ders · 40+5dk</span>
+            <span class="bb-sub">10 dilim · 40+5dk</span>
           </div>
           <div class="block-btn" onclick="selectBlock(this,'block2')" data-block="block2">
             <span class="bb-icon">🧱</span>
@@ -443,7 +467,7 @@ body::after {
           <div class="block-btn" onclick="selectBlock(this,'halfday')" data-block="halfday">
             <span class="bb-icon">🌅</span>
             <span class="bb-label">Yarım Gün</span>
-            <span class="bb-sub">5 ders · 40+10dk</span>
+            <span class="bb-sub">5 dilim · 40+10dk</span>
           </div>
           <div class="block-btn" onclick="selectBlock(this,'custom')" data-block="custom">
             <span class="bb-icon">⚙️</span>
@@ -455,14 +479,14 @@ body::after {
 
       <div class="block-custom" id="customBlockOpts">
         <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(130px,1fr));gap:15px;margin-bottom:15px;">
-          <div class="sf" style="margin:0"><label>İlk Ders</label><input type="time" id="sch_start" value="08:00"></div>
-          <div class="sf" style="margin:0"><label>Ders Süresi</label><input type="number" id="sch_lessonMin" value="40"></div>
-          <div class="sf" style="margin:0"><label>Teneffüs Süresi</label><input type="number" id="sch_breakMin" value="10"></div>
-          <div class="sf" style="margin:0"><label>Ders Sayısı</label><input type="number" id="sch_count" value="8"></div>
+          <div class="sf" style="margin:0"><label>İlk Dilim</label><input type="time" id="sch_start" value="08:00"></div>
+          <div class="sf" style="margin:0"><label>Dilim Süresi (dk)</label><input type="number" id="sch_lessonMin" value="40"></div>
+          <div class="sf" style="margin:0"><label>Ara Süresi (dk)</label><input type="number" id="sch_breakMin" value="10"></div>
+          <div class="sf" style="margin:0"><label>Dilim Sayısı</label><input type="number" id="sch_count" value="8"></div>
         </div>
         <div style="display:flex;align-items:center;gap:20px;background:rgba(0,0,0,0.3);padding:10px 15px;border-radius:8px;">
           <label style="display:flex;align-items:center;gap:10px;cursor:pointer;font-size:14px;color:#fff;font-weight:800;">
-            <input type="checkbox" id="sch_hasLunch" style="width:18px;height:18px;accent-color:var(--gold);"> Öğle Arası Var
+            <input type="checkbox" id="sch_hasLunch" style="width:18px;height:18px;accent-color:var(--gold);"> Uzun Ara / Öğle Arası
           </label>
           <div id="lunchOpts" style="display:none;align-items:center;gap:15px;">
             <div style="display:flex;align-items:center;gap:8px;">
@@ -485,16 +509,16 @@ body::after {
     </div>
 
     <div class="setup-card full">
-      <div class="sc-title"><span>📢</span> Sağ Panel ve Alt Kayan Yazı</div>
+      <div class="sc-title"><span>📢</span> Duyurular ve Alt Kayan Yazı</div>
       
       <div class="sf">
         <label>Sağ Panel Duyuruları (Her satıra bir duyuru)</label>
-        <textarea id="s_announcements" rows="4" placeholder="Örn: Sınav takvimi ilan edildi..."></textarea>
+        <textarea id="s_announcements" rows="4" placeholder="Örn: Toplantı saat 14:00'da başlayacak, Lütfen bölümünüzü kontrol edin..."></textarea>
       </div>
 
       <div class="sf" style="margin-top:20px; padding-top:20px; border-top:1px solid rgba(255,255,255,0.05);">
         <label>Alt Kayan Yazı / Ticker (Her satıra bir mesaj)</label>
-        <textarea id="s_ticker" rows="3" placeholder="Örn: Kütüphane saat 17:00'a kadar açıktır..."></textarea>
+        <textarea id="s_ticker" rows="3" placeholder="Örn: Bilgi için lütfen resepsiyona başvurun, Wi-Fi şifresi: misafir123..."></textarea>
         <div class="sf-hint">Ekranın en altındaki kırmızı alanda sürekli kayarak geçecek mesajlardır.</div>
       </div>
     </div>
@@ -526,9 +550,9 @@ body::after {
   <div class="h-school">
     <div class="h-emblem" id="hEmblem">
       <img src="logo.png" alt="Logo" id="hLogoImg" onerror="this.style.display='none';document.getElementById('hLogoFallback').style.display='flex';">
-      <span id="hLogoFallback" style="display:none;font-size:36px;">🏫</span>
+      <span id="hLogoFallback" style="display:none;font-size:36px;">📋</span>
     </div>
-    <div class="h-text editable" id="hdr-school" title="Okul adını düzenle">
+    <div class="h-text editable" id="hdr-school" title="Kurum adını düzenle">
       <div class="h-name" id="schoolName"></div>
       <div class="h-sub" id="schoolSub"></div>
     </div>
@@ -541,7 +565,7 @@ body::after {
 
 <div class="main">
   <div class="left-panel">
-    <div class="ph"><span class="ph-icon">🕐</span> Ders &amp; Teneffüs</div>
+    <div class="ph"><span class="ph-icon">🕐</span> <span id="phTitle">Program</span></div>
     <div class="duty-list" id="dutyList"></div>
   </div>
 
@@ -581,7 +605,7 @@ body::after {
 </div>
 
 <div class="duty-ticker">
-  <div class="duty-ticker-lbl">👨‍🏫 NÖBETÇİ ÖĞRETMENLER</div>
+  <div class="duty-ticker-lbl" id="dutyTickerLbl">👤 GÖREVLİ PERSONEL</div>
   <div class="duty-ticker-wrap">
     <div class="duty-ticker-track" id="dutyTickerTrack"></div>
   </div>
@@ -610,6 +634,11 @@ const DEFAULTS = {
   schoolName: '',
   schoolSub:  '',
   logoData: '',
+  scheduleTitle: '',
+  slotLabel: '',
+  breakLabel: '',
+  dutyTickerTitle: '',
+  staffColLabel: '',
   weather: { city:'', temp:'--', icon:'⛅', desc:'Hava durumu bekleniyor...' },
   
   schedule: [
@@ -660,6 +689,14 @@ function render() {
   document.getElementById('schoolSub').textContent  = DATA.schoolSub;
   document.title = DATA.schoolName || 'Dijital Pano';
 
+  // Sol panel ve ticker başlıklarını güncelle
+  const phTitle = document.getElementById('phTitle');
+  if (phTitle) phTitle.textContent = DATA.scheduleTitle || 'Program';
+  const dtLbl = document.getElementById('dutyTickerLbl');
+  if (dtLbl) dtLbl.textContent = (DATA.dutyTickerIcon || '👤') + ' ' + (DATA.dutyTickerTitle || 'GÖREVLİ PERSONEL');
+  const thStaff = document.getElementById('thStaffName');
+  if (thStaff) thStaff.textContent = DATA.staffColLabel || 'Ad Soyad / İsim';
+
   // Logo
   if (DATA.logoData) {
     const hImg = document.getElementById('hLogoImg');
@@ -683,7 +720,8 @@ function render() {
     const startMin = sh*60+sm, endMin = eh*60+em;
     const active = hhmm>=startMin && hhmm<endMin ? ' active-row' : '';
     const isBreak = s.type === 'break';
-    const label = isBreak ? (s.num.includes('Öğle') ? '🍽 Öğle Arası' : s.num.includes('Uzun') ? '☕ Uzun Teneffüs' : '☕ Teneffüs') : '📖 Ders';
+    const slotLbl = DATA.slotLabel || 'Ders'; const brkLbl = DATA.breakLabel || 'Teneffüs';
+    const label = isBreak ? (s.num.includes('Öğle') || s.num.includes('Uzun Ara') ? '🍽 ' + s.num : '☕ ' + brkLbl) : '📖 ' + slotLbl;
     return `<div class="lesson-item ${s.type}${active}">
       <div class="lesson-dot"></div>
       <div class="lesson-time"><span class="lt-start">${s.start}</span><span class="lt-end">${s.end}</span></div>
@@ -760,7 +798,7 @@ function buildTeachersTicker() {
   const teachers = DATA.teachers || [];
   
   if (teachers.length === 0) {
-    track.innerHTML = '<span class="dt-tick-item" style="color:var(--text-muted); font-style:italic;">Henüz nöbetçi öğretmen girişi yapılmadı.</span>';
+    track.innerHTML = '<span class="dt-tick-item" style="color:var(--text-muted); font-style:italic;">Henüz görevli personel girişi yapılmadı.</span>';
     track.style.animation = 'none';
     return;
   }
@@ -769,7 +807,7 @@ function buildTeachersTicker() {
   const html = teachers.map(t => {
     const name = typeof t === 'object' ? t.name : t;
     const floor = typeof t === 'object' && t.floor ? `<span class="dt-tick-floor">${t.floor}</span>` : '';
-    return `<span class="dt-tick-item"><span class="dt-tick-icon">👨‍🏫</span> ${name} ${floor}</span>`;
+    return `<span class="dt-tick-item"><span class="dt-tick-icon">👤</span> ${name} ${floor}</span>`;
   }).join(sep) + sep;
   
   track.innerHTML = html.repeat(2);
@@ -884,7 +922,9 @@ function buildScheduleActive() {
     const [sh,sm] = s.start.split(':').map(Number); const [eh,em] = s.end.split(':').map(Number);
     const active = hhmm >= sh*60+sm && hhmm < eh*60+em;
     row.classList.toggle('active-row', active);
-    if (s.type === 'lesson') row.querySelector('.lesson-label').textContent = active ? '▶ Ders Sürüyor' : '📖 Ders';
+    const _slot = DATA.slotLabel || 'Ders'; const _brk = DATA.breakLabel || 'Ara';
+    if (s.type === 'lesson') row.querySelector('.lesson-label').textContent = active ? ('▶ ' + _slot + ' Sürüyor') : ('📖 ' + _slot);
+    else if (s.type === 'break') row.querySelector('.lesson-label').textContent = active ? ('▶ ' + _brk + ' Sürüyor') : ('☕ ' + _brk);
   });
 }
 
@@ -916,7 +956,7 @@ function updateCenterSession() {
       if (sh*60+sm > hhmm) { next = s; break; }
     }
     label.className = 'ccb-sess-label type-none';
-    label.textContent = next ? '— Sonraki Oturum —' : '— Ders Saatleri Dışı —';
+    label.textContent = next ? '— Sonraki Dilim —' : '— Program Dışı —';
     times.textContent  = next ? `${next.start} – ${next.end}` : '';
     bar.style.width    = '0%'; bar.className = 'ccb-progress-bar';
     remain.textContent = next ? (() => { const [sh,sm]=next.start.split(':').map(Number); const diff=(sh*60+sm)-hhmm; return diff+'dk sonra başlıyor'; })() : '';
@@ -928,12 +968,13 @@ function updateCenterSession() {
   const passedSec = totalSec - startSec; const pct = Math.min(100, Math.max(0, (passedSec / durSec)*100));
   const leftSec = Math.max(0, endSec - totalSec); const leftMin = Math.floor(leftSec/60); const leftS = leftSec%60;
 
-  const isLesson = found.type === 'lesson'; const isLunch = found.num && found.num.includes('Öğle');
+  const isLesson = found.type === 'lesson'; const isLunch = found.num && (found.num.includes('Öğle') || found.num.includes('Uzun Ara'));
   const typeKey = isLunch ? 'lunch' : isLesson ? 'lesson' : 'break';
-  const icons = { lesson:'📖', break:'☕', lunch:'🍽' };
+  const _sl = DATA.slotLabel || 'Ders'; const _bl = DATA.breakLabel || 'Mola';
+  const icons = { lesson:'📖 ' + _sl, break:'☕ ' + _bl, lunch:'🍽 Uzun Ara' };
 
   label.className = `ccb-sess-label type-${typeKey}`;
-  label.textContent = `${icons[typeKey]} ${found.num}`;
+  label.textContent = `${icons[typeKey]}: ${found.num}`;
   times.textContent = `${found.start} – ${found.end}`;
   bar.className = `ccb-progress-bar type-${typeKey}`;
   bar.style.width = pct.toFixed(1) + '%';
@@ -974,8 +1015,8 @@ function attachEditable() {
 
   document.getElementById('hdr-school').onclick = (e) => {
     e.stopPropagation();
-    openModal('Okul Bilgileri', [
-      { key:'name', label:'Okul / Pano Adı', value: DATA.schoolName },
+    openModal('Kurum Bilgileri', [
+      { key:'name', label:'Kurum / Pano Adı', value: DATA.schoolName },
       { key:'sub',  label:'Alt Başlık', value: DATA.schoolSub },
     ], () => {
       DATA.schoolName = getFieldVal('name') || DATA.schoolName;
@@ -986,15 +1027,15 @@ function attachEditable() {
 
   document.getElementById('weather-box').onclick = (e) => {
     e.stopPropagation();
-    openModal('Hava Durumu', [{ key:'city', label:'Şehir Adı (Türkçe)', value: DATA.weather.city }], async () => {
+    openModal('Hava Durumu', [{ key:'city', label:'Şehir / Konum Adı', value: DATA.weather.city }], async () => {
       const city = getFieldVal('city') || DATA.weather.city;
       closeModal();
       try {
-        const geoRes = await fetch(`https://nominatim.openstreetmap.org/search?q=${encodeURIComponent(city+', Türkiye')}&format=json&limit=1`,{headers:{'Accept-Language':'tr'}});
+        const geoRes = await fetch(`https://nominatim.openstreetmap.org/search?q=${encodeURIComponent(city)}&format=json&limit=1`,{headers:{'Accept-Language':'tr'}});
         const geoData = await geoRes.json();
         if (geoData.length) {
           const { lat, lon } = geoData[0];
-          const wRes = await fetch(`https://api.open-meteo.com/v1/forecast?latitude=${lat}&longitude=${lon}&current=temperature_2m,weathercode&timezone=Europe%2FIstanbul`);
+          const wRes = await fetch(`https://api.open-meteo.com/v1/forecast?latitude=${lat}&longitude=${lon}&current=temperature_2m,weathercode&timezone=auto`);
           const wData = await wRes.json();
           const temp = Math.round(wData.current.temperature_2m);
           const code = wData.current.weathercode;
@@ -1072,12 +1113,12 @@ async function fetchWeatherPreview() {
   setWeatherMsg('🔍 Şehir aranıyor...', 'var(--text-muted)');
   document.getElementById('weatherPreview').style.display = 'none';
   try {
-    const geoRes = await fetch(`https://nominatim.openstreetmap.org/search?q=${encodeURIComponent(city+', Türkiye')}&format=json&limit=1`, {headers:{'Accept-Language':'tr'}});
+    const geoRes = await fetch(`https://nominatim.openstreetmap.org/search?q=${encodeURIComponent(city)}&format=json&limit=1`, {headers:{'Accept-Language':'tr'}});
     const geoData = await geoRes.json();
     if (!geoData.length) { setWeatherMsg('⚠ Şehir bulunamadı.', '#EF4444'); return; }
     const { lat, lon, display_name } = geoData[0];
     setWeatherMsg('⛅ Hava durumu alınıyor...', 'var(--text-muted)');
-    const wRes = await fetch(`https://api.open-meteo.com/v1/forecast?latitude=${lat}&longitude=${lon}&current=temperature_2m,weathercode&timezone=Europe%2FIstanbul`);
+    const wRes = await fetch(`https://api.open-meteo.com/v1/forecast?latitude=${lat}&longitude=${lon}&current=temperature_2m,weathercode&timezone=auto`);
     const wData = await wRes.json();
     const temp = Math.round(wData.current.temperature_2m);
     const code = wData.current.weathercode;
@@ -1095,7 +1136,7 @@ function setWeatherMsg(msg, color) { const el = document.getElementById('weather
 async function liveWeatherUpdate() {
   if (!DATA.weather._lat || !DATA.weather._lon) return;
   try {
-    const wRes = await fetch(`https://api.open-meteo.com/v1/forecast?latitude=${DATA.weather._lat}&longitude=${DATA.weather._lon}&current=temperature_2m,weathercode&timezone=Europe%2FIstanbul`);
+    const wRes = await fetch(`https://api.open-meteo.com/v1/forecast?latitude=${DATA.weather._lat}&longitude=${DATA.weather._lon}&current=temperature_2m,weathercode&timezone=auto`);
     const wData = await wRes.json();
     const temp = Math.round(wData.current.temperature_2m);
     const code = wData.current.weathercode;
@@ -1109,10 +1150,10 @@ async function liveWeatherUpdate() {
 }
 
 const BLOCK_PRESETS = {
-  standard:  { start:'08:00', lessonMin:40,  breakMin:10, count:8,  hasLunch:false, label:'Standart (8 ders · 40+10dk)' },
-  intensive: { start:'08:00', lessonMin:40,  breakMin:5,  count:10, hasLunch:true,  lunchAfter:5, lunchMin:30, label:'Yoğun (10 ders · 40+5dk)' },
+  standard:  { start:'08:00', lessonMin:40,  breakMin:10, count:8,  hasLunch:false, label:'Standart (8 dilim · 40+10dk)' },
+  intensive: { start:'08:00', lessonMin:40,  breakMin:5,  count:10, hasLunch:true,  lunchAfter:5, lunchMin:30, label:'Yoğun (10 dilim · 40+5dk)' },
   block2:    { start:'08:00', lessonMin:80,  breakMin:15, count:5,  hasLunch:true,  lunchAfter:2, lunchMin:45, label:'Blok 2×40 (5 blok · 80dk)' },
-  halfday:   { start:'08:00', lessonMin:40,  breakMin:10, count:5,  hasLunch:false, label:'Yarım Gün (5 ders)' },
+  halfday:   { start:'08:00', lessonMin:40,  breakMin:10, count:5,  hasLunch:false, label:'Yarım Gün (5 dilim)' },
   custom:    null,
 };
 
@@ -1157,14 +1198,17 @@ function generateSchedule() {
 
   setupSchedule = []; let cur = startMin;
   for (let i = 1; i <= count; i++) {
-    const lessonLabel = lessonMin >= 70 ? `Blok ${i}. Ders` : `${i}. Ders`;
+    const _sLbl = (document.getElementById('s_slotLabel') && document.getElementById('s_slotLabel').value.trim()) || 'Ders';
+    const lessonLabel = lessonMin >= 70 ? `Blok ${i}. ${_sLbl}` : `${i}. ${_sLbl}`;
     setupSchedule.push({ type:'lesson', num: lessonLabel, start: toHHMM(cur), end: toHHMM(cur + lessonMin) });
     cur += lessonMin;
     if (i < count) {
       if (hasLunch && i === lunchAfter) {
-        setupSchedule.push({ type:'break', num:'Öğle Arası', start: toHHMM(cur), end: toHHMM(cur + lunchMin) }); cur += lunchMin;
+        const _bLbl2 = (document.getElementById('s_breakLabel') && document.getElementById('s_breakLabel').value.trim()) || 'Mola';
+        setupSchedule.push({ type:'break', num:'Uzun Ara / ' + _bLbl2, start: toHHMM(cur), end: toHHMM(cur + lunchMin) }); cur += lunchMin;
       } else {
-        setupSchedule.push({ type:'break', num: breakMin >= 15 ? 'Uzun Teneffüs' : 'Teneffüs', start: toHHMM(cur), end: toHHMM(cur + breakMin) }); cur += breakMin;
+        const _bLbl3 = (document.getElementById('s_breakLabel') && document.getElementById('s_breakLabel').value.trim()) || 'Ara';
+        setupSchedule.push({ type:'break', num: breakMin >= 15 ? ('Uzun ' + _bLbl3) : _bLbl3, start: toHHMM(cur), end: toHHMM(cur + breakMin) }); cur += breakMin;
       }
     }
   }
@@ -1175,7 +1219,7 @@ function generateSchedule() {
     <thead><tr style="text-align:left;color:#94A3B8;border-bottom:1px solid rgba(255,255,255,0.1);"><th>Tür</th><th>Ad</th><th>Başlangıç</th><th>Bitiş</th></tr></thead>
     <tbody>${setupSchedule.map((r,idx)=>`
       <tr>
-        <td style="padding:5px;"><input value="${r.type==='lesson'?'📖 Ders':'☕ Teneffüs'}" readonly style="width:100px;background:transparent;color:${r.type==='lesson'?'#60A5FA':'var(--gold)'};border:none;font-size:14px;outline:none;font-weight:bold;"></td>
+        <td style="padding:5px;"><input value="${r.type==='lesson'?'📖 Ana':'☕ Ara'}" readonly style="width:100px;background:transparent;color:${r.type==='lesson'?'#60A5FA':'var(--gold)'};border:none;font-size:14px;outline:none;font-weight:bold;"></td>
         <td style="padding:5px;"><input value="${r.num}" oninput="setupSchedule[${idx}].num=this.value" style="width:100%;background:rgba(255,255,255,0.05);border:none;color:#fff;padding:8px;border-radius:6px;font-size:14px;"></td>
         <td style="padding:5px;"><input type="time" value="${r.start}" oninput="setupSchedule[${idx}].start=this.value" style="width:100px;background:rgba(255,255,255,0.05);border:none;color:#fff;padding:8px;border-radius:6px;font-size:14px;"></td>
         <td style="padding:5px;"><input type="time" value="${r.end}" oninput="setupSchedule[${idx}].end=this.value" style="width:100px;background:rgba(255,255,255,0.05);border:none;color:#fff;padding:8px;border-radius:6px;font-size:14px;"></td>
@@ -1337,6 +1381,11 @@ function populateSetup(src) {
   document.getElementById('s_schoolName').value = d.schoolName || '';
   document.getElementById('s_schoolSub').value  = d.schoolSub  || '';
   document.getElementById('s_wCity').value       = (d.weather && d.weather.city) ? d.weather.city : '';
+  document.getElementById('s_scheduleTitle').value   = d.scheduleTitle   || '';
+  document.getElementById('s_slotLabel').value       = d.slotLabel     || '';
+  document.getElementById('s_breakLabel').value      = d.breakLabel    || '';
+  document.getElementById('s_dutyTickerTitle').value = d.dutyTickerTitle || '';
+  document.getElementById('s_staffColLabel').value   = d.staffColLabel  || '';
   document.getElementById('s_announcements').value = (d.announcements||[]).map(a=>a.text).join('\n');
   document.getElementById('s_ticker').value = (d.ticker||[]).join('\n');
   
@@ -1358,16 +1407,21 @@ async function startBoard() {
 
   DATA.schoolName = document.getElementById('s_schoolName').value.trim();
   DATA.schoolSub  = document.getElementById('s_schoolSub').value.trim();
+  DATA.scheduleTitle    = document.getElementById('s_scheduleTitle').value.trim();
+  DATA.slotLabel        = document.getElementById('s_slotLabel').value.trim();
+  DATA.breakLabel       = document.getElementById('s_breakLabel').value.trim();
+  DATA.dutyTickerTitle  = document.getElementById('s_dutyTickerTitle').value.trim();
+  DATA.staffColLabel    = document.getElementById('s_staffColLabel').value.trim();
 
   const city = document.getElementById('s_wCity').value.trim();
   if (weatherFetched) { DATA.weather = { ...weatherFetched }; }
   else if (city) {
     try {
-      const geoRes = await fetch(`https://nominatim.openstreetmap.org/search?q=${encodeURIComponent(city+', Türkiye')}&format=json&limit=1`,{headers:{'Accept-Language':'tr'}});
+      const geoRes = await fetch(`https://nominatim.openstreetmap.org/search?q=${encodeURIComponent(city)}&format=json&limit=1`,{headers:{'Accept-Language':'tr'}});
       const geoData = await geoRes.json();
       if (geoData.length) {
         const { lat, lon } = geoData[0];
-        const wRes = await fetch(`https://api.open-meteo.com/v1/forecast?latitude=${lat}&longitude=${lon}&current=temperature_2m,weathercode&timezone=Europe%2FIstanbul`);
+        const wRes = await fetch(`https://api.open-meteo.com/v1/forecast?latitude=${lat}&longitude=${lon}&current=temperature_2m,weathercode&timezone=auto`);
         const wData = await wRes.json();
         const temp = Math.round(wData.current.temperature_2m);
         const code = wData.current.weathercode;
