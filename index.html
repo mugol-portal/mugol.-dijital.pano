@@ -324,6 +324,139 @@ body::after {
 #boardWrap.visible { display: flex; }
 .block-custom { display: none; background: rgba(255,255,255,0.015); padding: 18px; border-radius: var(--radius-md); border: 1px solid var(--border-light); margin-bottom: 16px; }
 .block-custom.visible { display: block; }
+
+/* ══════════════════════════════════════════════════
+   TAM EKRAN BUTONU (Footer - masaüstü)
+══════════════════════════════════════════════════ */
+.foot-btn.fs-btn { background: rgba(245,158,11,0.15); border: 1px solid rgba(245,158,11,0.35); color: var(--gold); }
+.foot-btn.fs-btn:hover { background: rgba(245,158,11,0.3); border-color: var(--gold); }
+
+/* ══════════════════════════════════════════════════
+   YÜZEN TAM EKRAN BUTONU (Mobil)
+══════════════════════════════════════════════════ */
+#fsBtnFloat {
+  display: none;
+  position: fixed; bottom: 58px; right: 10px; z-index: 9000;
+  width: 42px; height: 42px; border-radius: 50%;
+  background: rgba(245,158,11,0.9); color: #000;
+  border: none; font-size: 18px; cursor: pointer;
+  align-items: center; justify-content: center;
+  box-shadow: 0 4px 16px rgba(245,158,11,0.5);
+  transition: 0.2s;
+}
+#fsBtnFloat:hover { transform: scale(1.1); }
+
+/* ══════════════════════════════════════════════════
+   MOBİL YATAY UYARI EKRANI
+══════════════════════════════════════════════════ */
+#rotateOverlay {
+  display: none;
+  position: fixed; inset: 0; z-index: 999999;
+  background: var(--bg-main);
+  flex-direction: column;
+  align-items: center; justify-content: center;
+  gap: 24px; text-align: center; padding: 40px;
+}
+#rotateOverlay .rot-icon {
+  font-size: 72px;
+  animation: rotatePhone 2s ease-in-out infinite;
+}
+@keyframes rotatePhone {
+  0%   { transform: rotate(0deg); }
+  30%  { transform: rotate(90deg); }
+  70%  { transform: rotate(90deg); }
+  100% { transform: rotate(0deg); }
+}
+#rotateOverlay .rot-title {
+  font-size: 22px; font-weight: 800; color: var(--gold); letter-spacing: 1px;
+}
+#rotateOverlay .rot-sub {
+  font-size: 14px; color: var(--text-muted); font-weight: 500;
+  max-width: 280px; line-height: 1.6;
+}
+
+/* ══════════════════════════════════════════════════
+   MOBİL RESPONSIVE (Portrait → uyarı göster)
+══════════════════════════════════════════════════ */
+@media screen and (max-width: 1024px) and (orientation: portrait) {
+  #rotateOverlay { display: flex !important; }
+}
+
+/* ══════════════════════════════════════════════════
+   MOBİL RESPONSIVE (Landscape → sığdır)
+══════════════════════════════════════════════════ */
+@media screen and (max-width: 1024px) and (orientation: landscape) {
+  /* Yüzen tam ekran butonu göster, footerdakini gizle */
+  #fsBtnFloat { display: flex !important; }
+  .foot-btn.fs-btn { display: none; }
+
+  /* Header küçült */
+  .header { height: 48px; }
+  .h-emblem { width: 34px; height: 34px; }
+  .h-school { padding: 0 12px; gap: 10px; }
+  .h-name { font-size: 15px; letter-spacing: 0.5px; }
+  .h-sub { font-size: 9px; letter-spacing: 2px; }
+  .h-text { padding: 2px 6px; }
+  .h-date { font-size: 11px; padding: 0 12px; letter-spacing: 0.5px; }
+  .h-time { font-size: 22px; min-width: 80px; padding: 0 14px; letter-spacing: 1px; }
+
+  /* Sol panel küçült */
+  .left-panel { width: 170px; }
+  .ph { padding: 10px 12px; font-size: 10px; letter-spacing: 1.5px; }
+  .lesson-time { width: 62px; padding: 8px 6px; }
+  .lt-start { font-size: 13px; }
+  .lt-end { font-size: 9px; }
+  .lesson-body { padding: 6px 10px; gap: 2px; }
+  .lesson-label { font-size: 10px; }
+  .lesson-num { font-size: 9px; }
+
+  /* Merkez clock bar küçült */
+  .center-clock-bar { height: 64px; padding: 0 20px; gap: 20px; }
+  .ccb-clock { font-size: 40px; letter-spacing: 2px; }
+  .ccb-divider { height: 40px; }
+  .ccb-sess-label { font-size: 15px; }
+  .ccb-sess-times { font-size: 11px; }
+  .ccb-sess-remain { font-size: 11px; }
+  .ccb-progress-wrap { margin: 2px 0; }
+
+  /* Sağ panel küçült */
+  .right-panel { width: 190px; }
+  .weather-box { padding: 12px 14px; }
+  .w-lbl { font-size: 9px; margin-bottom: 8px; letter-spacing: 1.5px; }
+  .w-icon { font-size: 36px; }
+  .w-temp { font-size: 30px; }
+  .w-city { font-size: 10px; }
+  .w-desc { font-size: 10px; }
+  .ap-hdr { padding: 8px 12px; font-size: 10px; letter-spacing: 1.5px; }
+  .ap-item { padding: 8px 10px; }
+  .ap-text { font-size: 12px; }
+  .ap-date { font-size: 10px; }
+  .ap-type { font-size: 9px; }
+  .ap-empty { font-size: 12px; padding: 20px 12px; }
+
+  /* Alt ticker küçült */
+  .duty-ticker { height: 28px; }
+  .duty-ticker-lbl { padding: 0 12px; font-size: 9px; letter-spacing: 1px; }
+  .dt-tick-item { font-size: 12px; }
+
+  /* Footer küçült */
+  .footer { height: 32px; }
+  .tick-lbl { padding: 0 12px; font-size: 9px; letter-spacing: 1.5px; }
+  .t-item { font-size: 12px; padding: 0 20px; }
+  .foot-brand { padding: 0 14px; }
+  .foot-brand span { font-size: 11px; }
+  .foot-btn { height: 22px; padding: 0 10px; font-size: 10px; }
+  .foot-data-btns { padding: 0 10px; gap: 6px; }
+
+  /* Slide alanı - slide nokta/progress */
+  .slide-dots { bottom: 8px; gap: 6px; }
+  .dot { width: 7px; height: 7px; }
+  .dot.active { width: 20px; }
+  .slide-prog { height: 3px; }
+  .ac-title { font-size: 22px; }
+  .ac-body { font-size: 14px; }
+  .ac-tag { font-size: 11px; padding: 5px 12px; margin-bottom: 12px; }
+}
 </style>
 </head>
 <body>
@@ -543,6 +676,16 @@ body::after {
   </div>
 </div>
 
+<!-- MOBİL YÜZEN TAM EKRAN BUTONU -->
+<button id="fsBtnFloat" onclick="toggleFullscreen()" title="Tam Ekran">⛶</button>
+
+<!-- MOBİL YATAY UYARI -->
+<div id="rotateOverlay">
+  <div class="rot-icon">📱</div>
+  <div class="rot-title">Telefonu Yatay Çevirin</div>
+  <div class="rot-sub">Bu ekran yatay (landscape) modda en iyi görüntülenir. Lütfen telefonunuzu döndürün.</div>
+</div>
+
 <!-- BOARD -->
 <div id="boardWrap">
 
@@ -615,6 +758,7 @@ body::after {
   <div class="tick-lbl">📢 DUYURU</div>
   <div class="tick-wrap"><div class="tick-track" id="tickerTrack"></div></div>
   <div class="foot-data-btns">
+    <button class="foot-btn fs-btn" id="fsBtn" onclick="toggleFullscreen()">⛶ Tam Ekran</button>
     <button class="foot-btn edit-btn" onclick="openSetupEdit()">⚙ Sistemi Düzenle</button>
   </div>
   <div class="foot-brand"><div class="foot-dot"></div><span>Dijital Pano</span></div>
@@ -1518,6 +1662,48 @@ function backToBoard() {
   document.getElementById('boardWrap').classList.add('visible');
   const backBtn = document.getElementById('setupBackBtn'); if (backBtn) backBtn.style.display = 'none';
 }
+
+/* ══════════════════════════════════════════════════
+   TAM EKRAN & MOBİL YATAY
+══════════════════════════════════════════════════ */
+function toggleFullscreen() {
+  if (!document.fullscreenElement) {
+    document.documentElement.requestFullscreen().then(() => {
+      updateFsButtons(true);
+      tryLockLandscape();
+    }).catch(() => {});
+  } else {
+    document.exitFullscreen().then(() => {
+      updateFsButtons(false);
+    }).catch(() => {});
+  }
+}
+
+function updateFsButtons(isFs) {
+  const btn  = document.getElementById('fsBtn');
+  const btnF = document.getElementById('fsBtnFloat');
+  if (btn)  btn.textContent  = isFs ? '✕ Çık' : '⛶ Tam Ekran';
+  if (btnF) btnF.textContent = isFs ? '✕' : '⛶';
+}
+
+function tryLockLandscape() {
+  try {
+    if (screen.orientation && screen.orientation.lock) {
+      screen.orientation.lock('landscape').catch(() => {});
+    }
+  } catch(e) {}
+}
+
+document.addEventListener('fullscreenchange', () => {
+  if (!document.fullscreenElement) {
+    updateFsButtons(false);
+    try { if (screen.orientation && screen.orientation.unlock) screen.orientation.unlock(); } catch(e) {}
+  }
+});
+
+document.addEventListener('keydown', e => {
+  if (e.key === 'F11') { e.preventDefault(); toggleFullscreen(); }
+});
 
 const _saved = loadData();
 if (_saved) Object.assign(DATA, mergeData(_saved, DEFAULTS));
